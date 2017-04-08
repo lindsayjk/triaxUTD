@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 
-typedef Scalar double;
+typedef double Scalar;
 
 struct Vector2 {
 	union {
