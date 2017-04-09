@@ -19,12 +19,12 @@ protected:
 
 	struct gsl_integration_workspace* integration_workspace;
 
-	static inline Scalar J0_integrand(Scalar u, const struct JK_integrands_params*);
-	static inline Scalar J1_integrand(Scalar u, const struct JK_integrands_params*);
-	static inline Scalar K0_integrand(Scalar u, const struct JK_integrands_params*);
-	static inline Scalar K1_integrand(Scalar u, const struct JK_integrands_params*);
-	static inline Scalar K2_integrand(Scalar u, const struct JK_integrands_params*);
-	static inline Scalar sph_convergence_function(Scalar u, const struct JK_integrands_params*);
+	static Scalar J0_integrand(Scalar u, const struct JK_integrands_params*);
+	static Scalar J1_integrand(Scalar u, const struct JK_integrands_params*);
+	static Scalar K0_integrand(Scalar u, const struct JK_integrands_params*);
+	static Scalar K1_integrand(Scalar u, const struct JK_integrands_params*);
+	static Scalar K2_integrand(Scalar u, const struct JK_integrands_params*);
+	static Scalar sph_convergence_function(Scalar u, const struct JK_integrands_params*);
 
 	inline void calcJKintegrals(Scalar x2, Scalar y2, Scalar zs, Scalar& J0, Scalar& J1, Scalar& K0, Scalar& K1, Scalar& K2);
 	inline void calcPotential2ndDerivatives(Scalar x, Scalar y, Scalar zs, Scalar& pot_xx, Scalar& pot_xy, Scalar& pot_yy);

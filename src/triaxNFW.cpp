@@ -49,7 +49,11 @@ triaxNFW::triaxNFW(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scala
 	qY = sqrt(qY2);
 	q2 = qY2/qX2;
 	q = qY/qX;
-	psi = atan2(B, A-C);
+	// DISCUSSION:
+	// Feroz and Hobson use the formula exactly as given below.
+	// The Python code has atan2(B, A-C) which does not give the same angle.
+	// Is the Python code deliberately based on a different definition of psi or was it a mistake?
+	psi = atan(B/(A-C))/2;
 }
 
 triaxNFW::~triaxNFW()
@@ -72,45 +76,45 @@ struct JK_integrands_params {
 
 // The 1/sqrt(f) factor is a constant and has been pulled out of the integrands.
 
-static inline Scalar triaxNFW::J0_integrand(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::J0_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	return params->lens->calcConvergence(zeta, params->zs)/sqrt(1-params->one_minus_q2*u);
 }
 
-static inline Scalar triaxNFW::J1_integrand(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::J1_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	return params->lens->calcConvergence(zeta, params->zs)/pow(1-params->one_minus_q2*u, 1.5);
 }
 
-static inline Scalar triaxNFW::sph_convergence_function(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::sph_convergence_function(Scalar u, const JK_integrands_params* params)
 {
 	return params->lens->calcConvergence(u, params->zs);
 }
 
-static inline Scalar triaxNFW::K0_integrand(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::K0_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa*/sqrt(zeta*(1-params->one_minus_q2)*u);
+	return u*delkappa/sqrt(zeta*(1-params->one_minus_q2)*u);
 }
 
-static inline Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa*/pow(zeta*(1-params->one_minus_q2)*u, 1.5);
+	return u*delkappa/pow(zeta*(1-params->one_minus_q2)*u, 1.5);
 }
 
-static inline Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
+static Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa*/pow(zeta*(1-params->one_minus_q2)*u, 2.5);
+	return u*delkappa/pow(zeta*(1-params->one_minus_q2)*u, 2.5);
 }
 
 // x2 and y2 should be prescaled by qx2
@@ -158,15 +162,21 @@ inline void triaxNFW::calcPotential2ndDerivatives(Scalar x, Scalar y, Scalar zs,
 
 // Calculated convergence and shear in the intermediate coordinate system
 // x and y should be prescaled by qx
-inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scalar zs, Scalar& kappa_intermediate, Scalar& gamma1_intermediate, Scalar& gamma2_intermediate)
+inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scalar zs, Scalar& kappa, Scalar& gamma1_intermediate, Scalar& gamma2_intermediate)
 {
 	Scalar pot_xx, pot_xy, pot_yy;
 	calcPotential2ndDerivatives(x, y, zs, pot_xx, pot_xy, pot_yy);
-	kappa_intermediate = (pot_xx+pot_yy)/2;
+	kappa = (pot_xx+pot_yy)/2;
 	gamma1_intermediate = (pot_xx-pot_yy)/2;
 	gamma2_intermediate = pot_xy;
 }
 
+// DISCUSSION:
+// The original Python code does not seem to do a translation or rotation from x,y to the intermediate coordinate system, only scaling.
+// Feroz and Hobson mention translation and rotation but only provide the equation for rotating the resulting shear back to the original coordinate system.
+// I have assumed the cluster (lens) location is always at x=0, y=0 w.r.t. to the observer so the translation is not needed. Is this a valid assumption?
+// However, I have added a rotation from the scaled x,y to the intermediate coordinate system by rotation through -2*psi since it is the opposite of the shear being transformed by rotating through 2*psi as given in the paper.
+// Instead of calculating the intermediate shear angle/magnitude and adding 2*psi to it, I did the rotation directly by a rotation matrix. This shouldn't change the result but means we don't need to calculate arctan.
 void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar z_source, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
 {
 	int num_coords = coord_list->getLen();
@@ -174,17 +184,26 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar z_sourc
 	Scalar* p_kappa_out = kappa_out->v;
 	Scalar* p_gamma1_out = gamma1_out->v;
 	Scalar* p_gamma2_out = gamma2_out->v;
+
+	Scalar sin_2psi = sin(2*psi);
+	Scalar cos_2psi = cos(2*psi);
+
 	for (int n = 0; n < num_coords; n++, v++, p_kappa_out++, p_gamma1_out++, p_gamma2_out++) {
-		Scalar x = v->x/q;
-		Scalar y = v->y/q;
+		Scalar x = v->x/qX;
+		Scalar y = v->y/qX;
 
-		// transform x and y to intermediate coordinate system
+		// transform x and y to intermediate coordinate system by rotating through -2*psi
+		Scalar xi = x*cos_2psi + y*sin_2psi;
+		Scalar yi = -x*sin_2psi + y*cos_2psi;
 
-		Scalar kappa_intermediate, gamma1_intermediate, gamma2_intermediate;
-		calcIntermediateConvergenceShear(x, y, z_source, kappa_intermediate, gamma1_intermediate, gamma2_intermediate);
+		Scalar kappa, gamma1_intermediate, gamma2_intermediate;
+		calcIntermediateConvergenceShear(xi, yi, z_source, kappa, gamma1_intermediate, gamma2_intermediate);
 
-		Scalar kappa, gamma1, gamma2;
-		// transform kappa/gamma out of the intermediate coordinate system
+		Scalar gamma1, gamma2;
+		// transform gamma out of the intermediate coordinate system by rotating through 2*psi
+		gamma1 = gamma1_intermediate*cos_2psi - gamma2_intermediate*sin_2psi;
+		gamma2 = gamma1_intermediate*sin_2psi + gamma2_intermediate*cos_2psi;
+		
 		*p_kappa_out=kappa;
 		*p_gamma1_out=gamma1;
 		*p_gamma2_out=gamma2;
