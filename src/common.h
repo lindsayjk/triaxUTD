@@ -82,4 +82,19 @@ typedef std::unique_ptr<Vector2Array1Dobj>& Vector2Array1DRef;
 typedef std::unique_ptr<Vector2Array2Dobj>& Vector2Array2DRef;
 
 struct Value {
+	enum ValType {
+		ScalarType,
+		IntType,
+		UnsignedIntType,
+		BoolType,
+		CStringType
+	};
+	ValType valType;
+	union {
+		Scalar scalarVal;
+		int intVal;
+		unsigned int unsignedIntVal;
+		bool boolVal;
+		const char* cstrVal;
+	};
 };
