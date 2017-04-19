@@ -13,13 +13,15 @@ public:
 	void calcSurfaceProfile(ScalarArray1DRef r, ScalarArray1DRef out) const;
 	void calcSurfaceProfile(ScalarArray2DRef r, ScalarArray2DRef out) const;
 	
-	Scalar calcConvergence(Scalar r, Scalar zs) const;
-	void calcConvergence(ScalarArray1DRef r, Scalar zs, ScalarArray1DRef out) const;
-	void calcConvergence(ScalarArray2DRef r, Scalar zs, ScalarArray2DRef out) const;
+	// To get sourceSigmaC, call calcSigmaC with the source redshift (calcSigmaC is defined in LensModel)
 
-	Scalar calcShear(Scalar r, Scalar zs) const;
-	void calcShear(ScalarArray1DRef r, ScalarArray1DRef out) const;
-	void calcShear(ScalarArray2DRef r, ScalarArray2DRef out) const;
+	Scalar calcConvergence(Scalar r, Scalar sourceSigmaC) const;
+	void calcConvergence(ScalarArray1DRef r, Scalar sourceSigmaC, ScalarArray1DRef out) const;
+	void calcConvergence(ScalarArray2DRef r, Scalar sourceSigmaC, ScalarArray2DRef out) const;
+
+	Scalar calcShear(Scalar r, Scalar sourceSigmaC) const;
+	void calcShear(ScalarArray1DRef r, Scalar sourceSigmaC, ScalarArray1DRef out) const;
+	void calcShear(ScalarArray2DRef r, Scalar sourceSigmaC, ScalarArray2DRef out) const;
 
 protected:
 	Scalar calcScaledSurfaceProfile(Scalar r, Scalar scale) const;

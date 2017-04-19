@@ -123,54 +123,54 @@ void sphNFW::calcScaledShear(ScalarArray2DRef r_array, Scalar scale, ScalarArray
 
 Scalar sphNFW::calcSurfaceProfile(Scalar r) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC();
+	Scalar scale = 2.0*rs_rhoC_deltaC;
 	return calcScaledSurfaceProfile(r, scale);
 }
 
 void sphNFW::calcSurfaceProfile(ScalarArray1DRef r_array, ScalarArray1DRef out_array) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC();
+	Scalar scale = 2.0*rs_rhoC_deltaC;
 	calcScaledSurfaceProfile(r_array, scale, out_array);
 }
 
 void sphNFW::calcSurfaceProfile(ScalarArray2DRef r_array, ScalarArray2DRef out_array) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC();
+	Scalar scale = 2.0*rs_rhoC_deltaC;
 	calcScaledSurfaceProfile(r_array, scale, out_array);
 }
 
-Scalar sphNFW::calcConvergence(Scalar r, Scalar zs) const
+Scalar sphNFW::calcConvergence(Scalar r, Scalar sourceSigmaC) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = 2.0*rs_rhoC_deltaC/sourceSigmaC;
 	return calcScaledSurfaceProfile(r, scale);
 }
 
-void sphNFW::calcConvergence(ScalarArray1DRef r_array, Scalar zs, ScalarArray1DRef out_array) const
+void sphNFW::calcConvergence(ScalarArray1DRef r_array, Scalar sourceSigmaC, ScalarArray1DRef out_array) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = 2.0*rs_rhoC_deltaC/sourceSigmaC;
 	calcScaledSurfaceProfile(r_array, scale, out_array);
 }
 
-void sphNFW::calcConvergence(ScalarArray2DRef r_array, Scalar zs, ScalarArray2DRef out_array) const
+void sphNFW::calcConvergence(ScalarArray2DRef r_array, Scalar sourceSigmaC, ScalarArray2DRef out_array) const
 {
-	Scalar scale = 2.0*get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = 2.0*rs_rhoC_deltaC/sourceSigmaC;
 	calcScaledSurfaceProfile(r_array, scale, out_array);
 }
 
-Scalar sphNFW::calcShear(Scalar r, Scalar zs) const
+Scalar sphNFW::calcShear(Scalar r, Scalar sourceSigmaC) const
 {
-	Scalar scale = get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = rs_rhoC_deltaC/sourceSigmaC;
 	return calcScaledShear(r, scale);
 }
 
-void sphNFW::calcShear(ScalarArray1DRef r_array, Scalar zs, ScalarArray1DRef out_array) const
+void sphNFW::calcShear(ScalarArray1DRef r_array, Scalar sourceSigmaC, ScalarArray1DRef out_array) const
 {
-	Scalar scale = get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = rs_rhoC_deltaC/sourceSigmaC;
 	calcScaledShear(r_array, scale, out_array);
 }
 
-void sphNFW::calcShear(ScalarArray2DRef r_array, Scalar zs, ScalarArray2DRef out_array) const
+void sphNFW::calcShear(ScalarArray2DRef r_array, Scalar sourceSigmaC, ScalarArray2DRef out_array) const
 {
-	Scalar scale = get_rs()*get_rhoC()*get_deltaC()/get_sigmaC(zs);
+	Scalar scale = rs_rhoC_deltaC/sourceSigmaC;
 	calcScaledShear(r_array, scale, out_array);
 }

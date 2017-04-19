@@ -17,44 +17,48 @@ public:
 	// convert r200 in Mpc to M200 in solar masses
 	Scalar r200ToM200() const
 	{
-		return 200*get_rhoC()*(4./3)*M_PI*pow(r200, 3.0);
+		return 200*rhoC*(4./3)*M_PI*pow(r200, 3.0);
 	}
 
 	// convert M200 in solar masses to r200 in Mpc
 	Scalar M200tor200() const
 	{
-		return cbrt((M200*3)/(200*get_rhoC()*4*M_PI));
+		return cbrt((M200*3)/(200*rhoC*4*M_PI));
 	}
 
 	// return cluster scale radius in Mpc
 	Scalar get_rs() const
 	{
-		return r200 / c;
+		return rs;
 	}
 
 	// return critical density at cluster redshift in units of solar masses/Mpc^3
 	Scalar get_rhoC() const
 	{
-		return cosmo->rho_c(z)*(1.E9)*cosmo->h2();
+		return rhoC;
 	}
 
-	// return delta_C for cluster concentration
+	// return deltaC for cluster concentration
 	Scalar get_deltaC() const
 	{
-		return (200./3.)*pow(c,3.0)/(log(1.0+c)-(c/(1.0+c)));
+		return deltaC;
 	}
 
 	// return critical surface density for cluster and source redshifts in solar masses/Mpc^2
-	Scalar get_sigmaC(Scalar z_source) const
+	// Performance Note: This calls into Cosmology.
+	Scalar calcSigmaC(Scalar z_source) const
 	{
-		Scalar z_lens = z;
-		Scalar Dl = cosmo->angularDiameterDistance(z_lens) / cosmo->h();
 		Scalar Ds = cosmo->angularDiameterDistance(z_source) / cosmo->h();
-		Scalar Dls = (1.0/(1.0+zs))*(Ds*(1.0+zs)-Dl*(1.0+zl));
+		Scalar Dls = (1.0/(1.0+z_source))*(Ds*(1.0+z_source)-Dl*(1.0+z));
 		return Constants.clight2*Ds/(4*M_PI*Constants.G*Dls*Dl);
 	}
 
 protected:
 	const Cosmology* cosmo;
 	Scalar c, r200, M200, z;
+	Scalar Dl;
+	Scalar rs; // cluster scale radius in Mpc
+	Scalar rhoC; // critical density at cluster redshift in units of solar masses/Mpc^3
+	Scalar deltaC; // deltaC for cluster concentration
+	Scalar rs_rhoC_deltaC; // rs, rhoC, and deltaC multiplied together
 };

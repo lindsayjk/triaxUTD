@@ -70,30 +70,30 @@ static inline Scalar calc_zeta_squared(Scalar u, Scalar x2, Scalar y2, Scalar on
 // x2 and y2 should be prescaled by qx2
 struct JK_integrands_params {
 	triaxNFW* lens;
-	Scalar x2, y2, one_minus_q2, zs;
+	Scalar x2, y2, one_minus_q2, sourceSigmaC;
 	gsl_function sph_convergence_function;
 };
 
 // The 1/sqrt(f) factor is a constant and has been pulled out of the integrands.
 
-static Scalar triaxNFW::J0_integrand(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::J0_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
-	return params->lens->calcConvergence(zeta, params->zs)/sqrt(1-params->one_minus_q2*u);
+	return params->lens->calcConvergence(zeta, params->sourceSigmaC)/sqrt(1-params->one_minus_q2*u);
 }
 
-static Scalar triaxNFW::J1_integrand(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::J1_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
-	return params->lens->calcConvergence(zeta, params->zs)/pow(1-params->one_minus_q2*u, 1.5);
+	return params->lens->calcConvergence(zeta, params->sourceSigmaC)/pow(1-params->one_minus_q2*u, 1.5);
 }
 
-static Scalar triaxNFW::sph_convergence_function(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::sph_convergence_function(Scalar u, const JK_integrands_params* params)
 {
-	return params->lens->calcConvergence(u, params->zs);
+	return params->lens->calcConvergence(u, params->sourceSigmaC);
 }
 
-static Scalar triaxNFW::K0_integrand(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::K0_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
@@ -101,7 +101,7 @@ static Scalar triaxNFW::K0_integrand(Scalar u, const JK_integrands_params* param
 	return u*delkappa/sqrt(zeta*(1-params->one_minus_q2)*u);
 }
 
-static Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
@@ -109,7 +109,7 @@ static Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* param
 	return u*delkappa/pow(zeta*(1-params->one_minus_q2)*u, 1.5);
 }
 
-static Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
+/*static*/ Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
@@ -118,14 +118,14 @@ static Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* param
 }
 
 // x2 and y2 should be prescaled by qx2
-inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar zs, Scalar& J0, Scalar& J1, Scalar& K0, Scalar& K1, Scalar& K2)
+inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC, Scalar& J0, Scalar& J1, Scalar& K0, Scalar& K1, Scalar& K2)
 {
 	JK_integrands_params params;
 	params.lens = this;
 	params.x2 = x2;
 	params.y2 = y2;
 	params.one_minus_q2 = 1-q2;
-	params.zs = zs;
+	params.sourceSigmaC = sourceSigmaC;
 	params.sph_convergence_function.function = reinterpret_cast<gsl_function>(&triaxNFW::sph_convergence_function);
 	params.sph_convergence_function.params = static_cast<void*>(&params);
 
@@ -149,12 +149,12 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar zs, Scalar& J
 }
 
 // x and y should be prescaled by qx
-inline void triaxNFW::calcPotential2ndDerivatives(Scalar x, Scalar y, Scalar zs, Scalar& pot_xx, Scalar& pot_xy, Scalar& pot_yy)
+inline void triaxNFW::calcPotential2ndDerivatives(Scalar x, Scalar y, Scalar sourceSigmaC, Scalar& pot_xx, Scalar& pot_xy, Scalar& pot_yy)
 {
 	Scalar x2 = x*x;
 	Scalar y2 = y*y;
 	Scalar J0, J1, K0, K1, K2;
-	calcJKintegrals(x2, y2, zs, J0, J1, K0, K1, K2);
+	calcJKintegrals(x2, y2, sourceSigmaC, J0, J1, K0, K1, K2);
 	pot_xx = q*(x2*K0 + J0);
 	pot_yy = q*(y2*K2 + J1);
 	pot_xy = q*x*y*K1;
@@ -162,10 +162,10 @@ inline void triaxNFW::calcPotential2ndDerivatives(Scalar x, Scalar y, Scalar zs,
 
 // Calculated convergence and shear in the intermediate coordinate system
 // x and y should be prescaled by qx
-inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scalar zs, Scalar& kappa, Scalar& gamma1_intermediate, Scalar& gamma2_intermediate)
+inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scalar sourceSigmaC, Scalar& kappa, Scalar& gamma1_intermediate, Scalar& gamma2_intermediate)
 {
 	Scalar pot_xx, pot_xy, pot_yy;
-	calcPotential2ndDerivatives(x, y, zs, pot_xx, pot_xy, pot_yy);
+	calcPotential2ndDerivatives(x, y, sourceSigmaC, pot_xx, pot_xy, pot_yy);
 	kappa = (pot_xx+pot_yy)/2;
 	gamma1_intermediate = (pot_xx-pot_yy)/2;
 	gamma2_intermediate = pot_xy;
@@ -177,7 +177,7 @@ inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scala
 // I have assumed the cluster (lens) location is always at x=0, y=0 w.r.t. to the observer so the translation is not needed. Is this a valid assumption?
 // However, I have added a rotation from the scaled x,y to the intermediate coordinate system by rotation through -2*psi since it is the opposite of the shear being transformed by rotating through 2*psi as given in the paper.
 // Instead of calculating the intermediate shear angle/magnitude and adding 2*psi to it, I did the rotation directly by a rotation matrix. This shouldn't change the result but means we don't need to calculate arctan.
-void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar z_source, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
+void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar sourceSigmaC, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
 {
 	int num_coords = coord_list->getLen();
 	Vector2* v = coord_list->v;
@@ -197,7 +197,7 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar z_sourc
 		Scalar yi = -x*sin_2psi + y*cos_2psi;
 
 		Scalar kappa, gamma1_intermediate, gamma2_intermediate;
-		calcIntermediateConvergenceShear(xi, yi, z_source, kappa, gamma1_intermediate, gamma2_intermediate);
+		calcIntermediateConvergenceShear(xi, yi, sourceSigmaC, kappa, gamma1_intermediate, gamma2_intermediate);
 
 		Scalar gamma1, gamma2;
 		// transform gamma out of the intermediate coordinate system by rotating through 2*psi
