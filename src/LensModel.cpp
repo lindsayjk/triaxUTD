@@ -1,12 +1,22 @@
 #include "LensModel.h"
 
-LensModel::LensModel(Scalar c, Scalar r200, Scalar M200, Scalar z, const Cosmology* cosmo)
-	: c(c), r200(r200), M200(M200), z(z), cosmo(cosmo)
+LensModel::LensModel()
 {
-	if(!cosmo) throw "Cosmology must be specified";
-	Dl = cosmo->angularDiameterDistance(z) / cosmo->h();
+}
+
+LensModel::~LensModel()
+{
+}
+
+void LensModel::setParameters(Scalar c, Scalar r200, Scalar M200, Scalar z, Scalar Dl, Scalar rhoC)
+{
+	this->c = c;
+	this->r200 = r200;
+	this->M200 = M200;
+	this->z = z;
+	this->Dl = Dl;
+	this->rhoC = rhoC;
 	rs = r200 / c;
-	rhoC = cosmo->rho_c(z)*(1.E9)*cosmo->h2();
 	deltaC = (200./3.)*pow(c,3.0)/(log(1.0+c)-(c/(1.0+c)));
 	rs_rhoC_deltaC = rs * rhoC * deltaC;
 	if(isnan(this->r200)) LensModel::r200ToM200();

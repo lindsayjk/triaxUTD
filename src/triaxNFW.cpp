@@ -37,11 +37,9 @@ static inline void calc_qX2_qY2(Scalar f, Scalar A, Scalar B, Scalar C, Scalar& 
 	qY2 = 2*f/(a+b);
 }
 
-triaxNFW::triaxNFW(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scalar theta, Scalar phi, Scalar z, const Cosmology* cosmo)
-	: sphNFW(c, r200, M200, z, cosmo), a(a), b(b), theta(theta), phi(phi)
+void triaxNFW::setParameters(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scalar theta, Scalar phi, Scalar z, Scalar Dl, Scalar rhoC)
 {
-	// TODO: See if changing the workspace size has an effect on integrals
-	integration_workspace = gsl_integration_workspace_alloc(1000);
+	sphNFW::setParameters(c, r200, M200, z, Dl, rhoC);
 	calc_fABC(theta, phi, a, b, f, A, B, C);
 	inv_sqrt_f = 1/sqrt(f);
 	calc_qX2_qY2(f, A, B, C, qX2, qY2);
@@ -49,11 +47,15 @@ triaxNFW::triaxNFW(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scala
 	qY = sqrt(qY2);
 	q2 = qY2/qX2;
 	q = qY/qX;
-	// DISCUSSION:
 	// Feroz and Hobson use the formula exactly as given below.
 	// The Python code has atan2(B, A-C) which does not give the same angle.
-	// Is the Python code deliberately based on a different definition of psi or was it a mistake?
 	psi = atan(B/(A-C))/2;
+}
+
+triaxNFW::triaxNFW()
+{
+	// TODO: See if changing the workspace size has an effect on integrals
+	integration_workspace = gsl_integration_workspace_alloc(1000);
 }
 
 triaxNFW::~triaxNFW()

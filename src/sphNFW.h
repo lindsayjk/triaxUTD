@@ -5,8 +5,7 @@ class sphNFW : public LensModel {
 private:
 	sphNFW() {}
 public:
-	// Either r200 or M200 may be NAN but not both.
-	sphNFW(Scalar c, Scalar r200, Scalar M200, Scalar z, const Cosmology* cosmo);
+	sphNFW();
 	~sphNFW();
 
 	Scalar calcSurfaceProfile(Scalar r) const;

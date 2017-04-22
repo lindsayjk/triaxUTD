@@ -3,9 +3,11 @@
 
 class triaxNFW : public sphNFW {
 public:
-	// Either r200 or M200 may be NAN but not both.
-	triaxNFW(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scalar theta, Scalar phi, Scalar z, const Cosmology* cosmo);
+	triaxNFW();
 	~triaxNFW();
+
+	// Either r200 or M200 may be NAN but not both.
+	void setParameters(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scalar theta, Scalar phi, Scalar z,  Scalar Dl, Scalar rhoC);
 
 	void calcConvergenceShear(Vector2Array1DRef coord_list, Scalar sourceSigmaC, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out);
 

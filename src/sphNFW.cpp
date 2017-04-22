@@ -1,7 +1,6 @@
 #include "sphNFW.h"
 
-sphNFW::sphNFW(Scalar c, Scalar r200, Scalar M200, Scalar z, const Cosmology* cosmo)
-	: LensModel(c, r200, M200, z, cosmo)
+sphNFW::sphNFW()
 {
 }
 
