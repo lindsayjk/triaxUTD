@@ -179,10 +179,11 @@ inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scala
 // I have assumed the cluster (lens) location is always at x=0, y=0 w.r.t. to the observer so the translation is not needed. Is this a valid assumption?
 // However, I have added a rotation from the scaled x,y to the intermediate coordinate system by rotation through -2*psi since it is the opposite of the shear being transformed by rotating through 2*psi as given in the paper.
 // Instead of calculating the intermediate shear angle/magnitude and adding 2*psi to it, I did the rotation directly by a rotation matrix. This shouldn't change the result but means we don't need to calculate arctan.
-void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar sourceSigmaC, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
+void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DRef sourceSigmaC_list, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
 {
 	int num_coords = coord_list->getLen();
 	Vector2* v = coord_list->v;
+	Scalar* p_sourceSigmaC = sourceSigmaC_list->v;
 	Scalar* p_kappa_out = kappa_out->v;
 	Scalar* p_gamma1_out = gamma1_out->v;
 	Scalar* p_gamma2_out = gamma2_out->v;
@@ -190,7 +191,7 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar sourceS
 	Scalar sin_2psi = sin(2*psi);
 	Scalar cos_2psi = cos(2*psi);
 
-	for (int n = 0; n < num_coords; n++, v++, p_kappa_out++, p_gamma1_out++, p_gamma2_out++) {
+	for (int n = 0; n < num_coords; n++, v++, p_sourceSigmaC++, p_kappa_out++, p_gamma1_out++, p_gamma2_out++) {
 		Scalar x = v->x/qX;
 		Scalar y = v->y/qX;
 
@@ -199,7 +200,7 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, Scalar sourceS
 		Scalar yi = -x*sin_2psi + y*cos_2psi;
 
 		Scalar kappa, gamma1_intermediate, gamma2_intermediate;
-		calcIntermediateConvergenceShear(xi, yi, sourceSigmaC, kappa, gamma1_intermediate, gamma2_intermediate);
+		calcIntermediateConvergenceShear(xi, yi, *p_sourceSigmaC, kappa, gamma1_intermediate, gamma2_intermediate);
 
 		Scalar gamma1, gamma2;
 		// transform gamma out of the intermediate coordinate system by rotating through 2*psi

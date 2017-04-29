@@ -1,7 +1,7 @@
 #pragma once
 #include <cmath>
 #include "common.h"
-#include "constants.h";
+#include "constants.h"
 
 // Base class for deriving various lensing models.
 class LensModel {
