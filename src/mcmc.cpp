@@ -35,8 +35,8 @@ static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar
 	double sige2 = pow(sige,2);
 	const double pi = 3.141592653589793;
 
-	g1model = gamma1/(1-kappa);
-	g2model = gamma2/(1-kappa);
+	double g1model = gamma1/(1-kappa);
+	double g2model = gamma2/(1-kappa);
 
 	complex<double> gmod(g1model,g2model);
 	double gabs2 = pow(abs(gmod),2);
