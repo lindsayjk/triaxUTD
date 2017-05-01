@@ -4,6 +4,9 @@
 #include "constants.h"
 #include "mcmc.h"
 #include "triaxNFW.h"
+#include <complex>
+
+using std namespace;
 
 struct CatalogEntry {
 	/* +00 */ double x;
@@ -28,6 +31,30 @@ static ScalarArray1D calculated_gamma2s(nullptr);
 static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar gamma1, Scalar gamma2)
 {
 	// TODO: calculate and return log likelihood
+	double sige= 0.25;
+	double sige2 = pow(sige,2);
+	const double pi = 3.141592653589793;
+
+	g1model = gamma1/(1-kappa);
+	g2model = gamma2/(1-kappa);
+
+	complex<double> gmod(g1model,g2model);
+	double gabs2 = pow(abs(gmod),2);
+	complex<double> gmodconj = conj(gmod);
+	complex<double> epsdat(eps1, eps2);
+
+
+	complex<double> epssrc = (epsdat - gmod)/(1-gmodconj*epsdat);
+	double epssrcmag = abs(epssrc);
+	double fac1 = -pow(epssrcmag,2)/sige2; //doesn't need to be ln'd, other 3 terms do
+	double fac2 = pow((gabs2-1),2);
+	double fac3 = pi*sige2*(1-exp(-1/sige2));
+	double fac4 = pow(abs(epsdat*gmodconj - 1),4);
+
+	loglike = fac1 + log(fac2) - log(fac3) - log(fac4);
+
+	return loglike;
+
 }
 
 static void read_galaxy_catalog()
