@@ -1,12 +1,12 @@
 #include <mpi.h>
 #include <cmath>
+#include <complex>
 #include "common.h"
 #include "constants.h"
 #include "mcmc.h"
 #include "triaxNFW.h"
-#include <complex>
 
-using std namespace;
+using namespace std;
 
 struct CatalogEntry {
 	/* +00 */ double x;
@@ -30,10 +30,8 @@ static ScalarArray1D calculated_gamma2s(nullptr);
 
 static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar gamma1, Scalar gamma2)
 {
-	// TODO: calculate and return log likelihood
-	double sige= 0.25;
-	double sige2 = pow(sige,2);
-	const double pi = 3.141592653589793;
+	const double sige= 0.25;
+	const double sige2 = 0.0625;
 
 	double g1model = gamma1/(1-kappa);
 	double g2model = gamma2/(1-kappa);
@@ -48,10 +46,10 @@ static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar
 	double epssrcmag = abs(epssrc);
 	double fac1 = -pow(epssrcmag,2)/sige2; //doesn't need to be ln'd, other 3 terms do
 	double fac2 = pow((gabs2-1),2);
-	double fac3 = pi*sige2*(1-exp(-1/sige2));
+	double fac3 = M_PI*sige2*(1-exp(-1/sige2));
 	double fac4 = pow(abs(epsdat*gmodconj - 1),4);
 
-	loglike = fac1 + log(fac2) - log(fac3) - log(fac4);
+	double loglike = fac1 + log(fac2) - log(fac3) - log(fac4);
 
 	return loglike;
 
