@@ -1,4 +1,6 @@
 #include <mpi.h>
+#include <iostream>
+#include <fstream>
 #include <cmath>
 #include <complex>
 #include "common.h"
@@ -18,7 +20,8 @@ struct CatalogEntry {
 	/* +48 */
 };
 
-static CatalogEntry* gal_catalog;
+static string gal_catalog_path;
+static CatalogEntry* gal_catalog = nullptr;
 static Vector2Array1D gal_xy(nullptr);
 static ScalarArray1D gal_sigmaC(nullptr);
 static int num_galaxies;
@@ -57,7 +60,16 @@ static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar
 
 static void read_galaxy_catalog()
 {
-	// TODO: Allocate gal_catalog, open catalog file, and read its contents into gal_catalog and set num_galaxies
+	size_t fsize;
+	ifstream f(gal_catalog_path, ifstream::binary | ifstream::ate);
+	if(f.fail()) throw "Galaxy catalog file could not be opened!";
+	fsize = f.tellg();
+	f.seekg(0);
+	num_galaxies = fsize / sizeof(CatalogEntry);
+	if(gal_catalog) delete gal_catalog;
+	gal_catalog = new CatalogEntry[num_galaxies];
+	f.read((char*)gal_catalog, fsize);
+	f.close();
 }
 
 static void populate_global_arrays_from_galaxy_catalog()
@@ -78,11 +90,32 @@ static void populate_global_arrays_from_galaxy_catalog()
 
 // The following two functions will be called from Fortran / CosmoMC
 
-void triaxUTD_setup(double _zl, double _Dl, double _rhoC)
+void triaxUTD_setup()
 {
-	zl=_zl;
-	Dl=_Dl;
-	rhoC=_rhoC;
+	ifstream params_file("triaxutd.params");
+	string line;
+	double d;
+
+	if(params_file.fail()) throw "triaxutd.params could not be opened!";
+
+	getline(params_file, line); // First line is a comment
+	getline(params_file, line); // Second line is a comment
+	getline(params_file, gal_catalog_path); // Path to galaxy catalog file
+
+	getline(params_file, line); // zl
+	sscanf(line.c_str(), "%lf", &d);
+	zl=d;
+
+	getline(params_file, line); // Dl
+	sscanf(line.c_str(), "%lf", &d);
+	zl=d;
+
+	getline(params_file, line); // rhoC
+	sscanf(line.c_str(), "%lf", &d);
+	zl=d;
+
+	params_file.close();
+
 	nfwModel.setParameters(1, 1, 1, 1, 1, 0, 0, zl, Dl, rhoC); // Set zl, Dl, and rhoC so calcSigmaC() can be used
 	read_galaxy_catalog();
 	populate_global_arrays_from_galaxy_catalog();

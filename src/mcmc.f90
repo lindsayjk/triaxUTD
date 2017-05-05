@@ -5,10 +5,7 @@ implicit none
 
 interface
 
-  subroutine setup(zl, Dl, rhoC) bind(c, name="triaxUTD_setup")
-	real(c_double), value :: zl
-	real(c_double), value :: Dl
-	real(c_double), value :: rhoC
+  subroutine setup() bind(c, name="triaxUTD_setup")
   end subroutine
 
   function lnlikelihood(c, r200, a, b, phi, theta) bind(c, name="triaxUTD_lnlikelihood")
