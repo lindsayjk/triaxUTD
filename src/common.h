@@ -1,5 +1,8 @@
 #pragma once
+#include <stdexcept>
 #include <memory>
+
+#define throw_line(x) throw std::runtime_error(x " at " __FILE__  ":" __LINE__)
 
 typedef double Scalar;
 

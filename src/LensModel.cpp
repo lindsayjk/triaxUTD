@@ -21,5 +21,5 @@ void LensModel::setParameters(Scalar c, Scalar r200, Scalar M200, Scalar z, Scal
 	rs_rhoC_deltaC = rs * rhoC * deltaC;
 	if(isnan(this->r200)) LensModel::r200ToM200();
 	else if(isnan(this->M200)) LensModel::M200tor200();
-	else throw "Either r200 or M200 or both must be specified";
+	else throw_line("Either r200 or M200 or both must be specified");
 }

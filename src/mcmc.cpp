@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <exception>
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -52,7 +53,7 @@ static void read_galaxy_catalog()
 {
 	size_t fsize;
 	ifstream f(gal_catalog_path, ifstream::binary | ifstream::ate);
-	if(f.fail()) throw "Galaxy catalog file could not be opened!";
+	if(f.fail()) throw_line("Galaxy catalog file could not be opened!");
 	fsize = f.tellg();
 	f.seekg(0);
 	num_galaxies = fsize / sizeof(CatalogEntry);
@@ -78,15 +79,35 @@ static void populate_global_arrays_from_galaxy_catalog()
 	}
 }
 
+static void triaxUTD_terminate()
+{
+	static bool rethrown = false;
+	try {
+		if (!rethrown) {
+			rethrown = true;
+			throw;
+		}
+	}
+	catch (const std::exception& e) {
+		cerr << e.what() << endl;
+	}
+	catch (...) {
+		cerr << "Unknown exception caught by triaxUTD_terminate" << endl;
+	}
+	std::abort();
+}
+
 // The following two functions will be called from Fortran / CosmoMC
 
 void triaxUTD_setup()
 {
+	std::set_terminate(triaxUTD_terminate);
+
 	ifstream params_file("triaxutd.params");
 	string line;
 	double d;
 
-	if(params_file.fail()) throw "triaxutd.params could not be opened!";
+	if(params_file.fail()) throw_line("triaxutd.params could not be opened!");
 
 	getline(params_file, line); // First line is a comment
 	getline(params_file, line); // Second line is a comment
