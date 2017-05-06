@@ -6,9 +6,6 @@
 #define throw_line_stringify(x) throw_line_stringify_token(x)
 #define throw_line_line throw_line_stringify(__LINE__)
 #define throw_line(x) throw std::runtime_error(x " at " __FILE__  ":" throw_line_line)
-#undef throw_line_line
-#undef throw_line_stringify
-#undef throw_line_stringify_token
 
 typedef double Scalar;
 
