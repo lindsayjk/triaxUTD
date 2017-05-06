@@ -89,10 +89,10 @@ static void triaxUTD_terminate()
 		}
 	}
 	catch (const std::exception& e) {
-		cerr << e.what() << endl;
+		cerr << "C++ exception: " << e.what() << endl;
 	}
 	catch (...) {
-		cerr << "Unknown exception caught by triaxUTD_terminate" << endl;
+		cerr << "Unknown C++ exception caught by triaxUTD_terminate" << endl;
 	}
 	std::abort();
 }
