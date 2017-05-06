@@ -19,7 +19,7 @@ protected:
 	Scalar q2, qX2, qY2; // q, qX, and qY squared
 	Scalar psi;
 
-	struct gsl_integration_workspace* integration_workspace;
+	void* integration_workspace;
 
 	static Scalar J0_integrand(Scalar u, const struct JK_integrands_params*);
 	static Scalar J1_integrand(Scalar u, const struct JK_integrands_params*);

@@ -25,6 +25,7 @@ public:
 
 protected:
 	const int size_in_elements;
+	TypedArraybaseobj(int size_in_elements);
 
 private:
 	TypedArraybaseobj() : v(nullptr), size_in_elements(0) {}
@@ -36,7 +37,7 @@ class TypedArray1Dobj : public TypedArraybaseobj<T> {
 public:
 	TypedArray1Dobj(int len);
 
-	int getLen() const { return len };
+	int getLen() const { return len; };
 
 protected:
 	int len;

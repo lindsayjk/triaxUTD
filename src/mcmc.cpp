@@ -77,8 +77,8 @@ static void populate_global_arrays_from_galaxy_catalog()
 	calculated_kappas.reset(new ScalarArray1Dobj(num_galaxies));
 	calculated_gamma1s.reset(new ScalarArray1Dobj(num_galaxies));
 	calculated_gamma2s.reset(new ScalarArray1Dobj(num_galaxies));
-	gal_xy.reset(new ScalarArray1Dobj(num_galaxies));
-	gal_sigmaC.reset(new Vector2Array1Dobj(num_galaxies));
+	gal_xy.reset(new Vector2Array1Dobj(num_galaxies));
+	gal_sigmaC.reset(new ScalarArray1Dobj(num_galaxies));
 	Vector2* xy = gal_xy->v;
 	Scalar* p_sigmaC = gal_sigmaC->v;
 	for (int n = 0; n < num_galaxies; n++, xy++, p_sigmaC++) {
@@ -123,6 +123,7 @@ void triaxUTD_setup()
 
 double triaxUTD_lnlikelihood(double c, double r200, double a, double b, double phi, double theta)
 {
+	if(a>b) return -INFINITY;
 	nfwModel.setParameters(c, r200, NAN, a, b, theta, phi, zl, Dl, rhoC);
 	nfwModel.calcConvergenceShear(gal_xy, gal_sigmaC, calculated_kappas, calculated_gamma1s, calculated_gamma2s);
 

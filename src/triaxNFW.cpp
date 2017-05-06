@@ -1,4 +1,5 @@
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_deriv.h>
 #include "triaxNFW.h"
 
 // This is what scipy was doing internally (when a and b are finite)
@@ -60,7 +61,7 @@ triaxNFW::triaxNFW()
 
 triaxNFW::~triaxNFW()
 {
-	gsl_integration_workspace_free(integration_workspace);
+	gsl_integration_workspace_free(static_cast<gsl_integration_workspace*>(integration_workspace));
 }
 
 // x2 and y2 should be prescaled by qx2
@@ -122,32 +123,34 @@ struct JK_integrands_params {
 // x2 and y2 should be prescaled by qx2
 inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC, Scalar& J0, Scalar& J1, Scalar& K0, Scalar& K1, Scalar& K2)
 {
+	typedef double (*integrand_fn)(double,void*);
+	gsl_integration_workspace* wksp = static_cast<gsl_integration_workspace*>(integration_workspace);
 	JK_integrands_params params;
 	params.lens = this;
 	params.x2 = x2;
 	params.y2 = y2;
 	params.one_minus_q2 = 1-q2;
 	params.sourceSigmaC = sourceSigmaC;
-	params.sph_convergence_function.function = reinterpret_cast<gsl_function>(&triaxNFW::sph_convergence_function);
+	params.sph_convergence_function.function = reinterpret_cast<integrand_fn>(&triaxNFW::sph_convergence_function);
 	params.sph_convergence_function.params = static_cast<void*>(&params);
 
 	gsl_function integrand;
 	integrand.params = static_cast<void*>(&params);
 
-	integrand.function = reinterpret_cast<gsl_function>(&triaxNFW::J0_integrand);
-	J0 = quad_integrate(&integrand, 0, 1, integration_workspace) * inv_sqrt_f;
+	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J0_integrand);
+	J0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 
-	integrand.function = reinterpret_cast<gsl_function>(&triaxNFW::J1_integrand);
-	J1 = quad_integrate(&integrand, 0, 1, integration_workspace) * inv_sqrt_f;
+	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J1_integrand);
+	J1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 
-	integrand.function = reinterpret_cast<gsl_function>(&triaxNFW::K0_integrand);
-	K0 = quad_integrate(&integrand, 0, 1, integration_workspace) * inv_sqrt_f;
+	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K0_integrand);
+	K0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 
-	integrand.function = reinterpret_cast<gsl_function>(&triaxNFW::K1_integrand);
-	K1 = quad_integrate(&integrand, 0, 1, integration_workspace) * inv_sqrt_f;
+	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K1_integrand);
+	K1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 
-	integrand.function = reinterpret_cast<gsl_function>(&triaxNFW::K2_integrand);
-	K2 = quad_integrate(&integrand, 0, 1, integration_workspace) * inv_sqrt_f;
+	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K2_integrand);
+	K2 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 }
 
 // x and y should be prescaled by qx

@@ -5,9 +5,6 @@
 
 // Base class for deriving various lensing models.
 class LensModel {
-private:
-	LensModel() {}
-
 public:
 	LensModel();
 	virtual ~LensModel();
@@ -50,11 +47,10 @@ public:
 	Scalar calcSigmaC(Scalar z_source, Scalar D_source) const
 	{
 		Scalar Dls = (1.0/(1.0+z_source))*(D_source*(1.0+z_source)-Dl*(1.0+z));
-		return Constants.clight2*Ds/(4*M_PI*Constants.G*Dls*Dl);
+		return Constants.clight2*D_source/(4*M_PI*Constants.G*Dls*Dl);
 	}
 
 protected:
-	const Cosmology* cosmo;
 	Scalar c, r200, M200, z; // concentration, r200/M200, and redshift of cluster
 	Scalar Dl; // distance to cluster
 	Scalar rs; // cluster scale radius in Mpc

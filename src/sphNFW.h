@@ -2,8 +2,6 @@
 #include "LensModel.h"
 
 class sphNFW : public LensModel {
-private:
-	sphNFW() {}
 public:
 	sphNFW();
 	~sphNFW();

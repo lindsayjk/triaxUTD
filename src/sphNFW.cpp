@@ -19,7 +19,7 @@ static inline Scalar calcSurfaceProfile_lt_1(Scalar x)
 {
 //	f = (1/(((r/rs)**2) - 1))*(1 - 2*(np.arctanh((((-r/rs) + 1)/((r/rs) + 1))**0.5)/((1 - ((r/rs)**2))**0.5)));
 	Scalar x2m1 = x*x - 1;
-	return (1/x2m1)*(1 - 2*atanh(sqrt((1 - x)/(x + 1))/sqrt(-x2m1));
+	return (1/x2m1)*(1 - 2*atanh(sqrt((1 - x)/(x + 1)))/sqrt(-x2m1));
 }
 
 static inline Scalar calcShear_gt_1(Scalar x)
@@ -102,7 +102,7 @@ void sphNFW::calcScaledShear(ScalarArray1DRef r_array, Scalar scale, ScalarArray
 		Scalar x = (*r)/rs;
 		if(x<1) *out = scale*calcShear_lt_1(x);
 		else if(x>1) *out = scale*calcShear_gt_1(x);
-		else return *out = scale*0.5607446110935520956644048475006270610313327958923123; // scale*(10/3+4*log(0.5))
+		else *out = scale*0.5607446110935520956644048475006270610313327958923123; // scale*(10/3+4*log(0.5))
 	}
 }
 
@@ -116,7 +116,7 @@ void sphNFW::calcScaledShear(ScalarArray2DRef r_array, Scalar scale, ScalarArray
 		Scalar x = (*r)/rs;
 		if(x<1) *out = scale*calcShear_lt_1(x);
 		else if(x>1) *out = scale*calcShear_gt_1(x);
-		else return *out = scale*0.5607446110935520956644048475006270610313327958923123; // scale*(10/3+4*log(0.5))
+		else *out = scale*0.5607446110935520956644048475006270610313327958923123; // scale*(10/3+4*log(0.5))
 	}
 }
 

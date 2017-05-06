@@ -25,6 +25,12 @@ TypedArraybaseobj<T>& TypedArraybaseobj<T>::operator=(TypedArraybaseobj<T> other
 }
 
 template<typename T>
+TypedArraybaseobj<T>::TypedArraybaseobj(int size_in_elements)
+	: size_in_elements(size_in_elements), v(new T[size_in_elements])
+{
+}
+
+template<typename T>
 TypedArraybaseobj<T>::~TypedArraybaseobj()
 {
 	if(v!=nullptr) delete v;
@@ -35,7 +41,7 @@ TypedArraybaseobj<T>::~TypedArraybaseobj()
 
 template<typename T>
 TypedArray1Dobj<T>::TypedArray1Dobj(int len)
-	: len(len), size_in_elements(len), v(new T[len])
+	: TypedArraybaseobj<T>(len), len(len)
 {
 }
 
@@ -43,12 +49,15 @@ TypedArray1Dobj<T>::TypedArray1Dobj(int len)
 
 template<typename T>
 TypedArray2Dobj<T>::TypedArray2Dobj(int width, int height)
-	: width(width), height(height), size_in_elements(width*height), v(new T[width*height])
+	: TypedArraybaseobj<T>(width*height), width(width), height(height)
 {
 }
 
 // Explicit template instantiation for supported array types
+template class TypedArraybaseobj<Scalar>;
+template class TypedArraybaseobj<Vector2>;
 template class TypedArray1Dobj<Scalar>;
 template class TypedArray2Dobj<Scalar>;
 template class TypedArray1Dobj<Vector2>;
 template class TypedArray2Dobj<Vector2>;
+
