@@ -10,16 +10,6 @@
 
 using namespace std;
 
-struct CatalogEntry {
-	/* +00 */ double x;
-	/* +08 */ double y;
-	/* +16 */ double eps1;
-	/* +24 */ double eps2;
-	/* +32 */ double zs;
-	/* +40 */ double Ds;
-	/* +48 */
-};
-
 static string gal_catalog_path;
 static CatalogEntry* gal_catalog = nullptr;
 static Vector2Array1D gal_xy(nullptr);
