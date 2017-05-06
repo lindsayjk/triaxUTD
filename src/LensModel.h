@@ -13,7 +13,7 @@ public:
 	void setParameters(Scalar c, Scalar r200, Scalar M200, Scalar z, Scalar Dl, Scalar rhoC);
 
 	// convert r200 in Mpc to M200 in solar masses
-	Scalar r200ToM200() const
+	Scalar r200toM200() const
 	{
 		return 200*rhoC*(4./3)*M_PI*pow(r200, 3.0);
 	}
