@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cmath>
 #include <complex>
+#include <cstring>
 #include "common.h"
 #include "constants.h"
 #include "mcmc.h"
@@ -21,6 +22,9 @@ static Scalar zl, Dl, rhoC;
 static ScalarArray1D calculated_kappas(nullptr);
 static ScalarArray1D calculated_gamma1s(nullptr);
 static ScalarArray1D calculated_gamma2s(nullptr);
+
+static MPI_File DebugFileMPI;
+static int CurrentRankMPI;
 
 static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar gamma1, Scalar gamma2)
 {
@@ -103,6 +107,12 @@ void triaxUTD_setup()
 {
 	std::set_terminate(triaxUTD_terminate);
 
+	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentRankMPI);
+	MPI_File_open(MPI_COMM_WORLD, "triaxutd.debug", MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &DebugFileMPI);
+	static char dbgstr[100];
+	sprintf(dbgstr, "[Rank %d] Process started\n", CurrentRankMPI);
+	MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
+
 	ifstream params_file("triaxutd.params");
 	string line;
 	double d;
@@ -119,11 +129,17 @@ void triaxUTD_setup()
 
 	getline(params_file, line); // Dl
 	sscanf(line.c_str(), "%lf", &d);
-	zl=d;
+	Dl=d;
 
 	getline(params_file, line); // rhoC
 	sscanf(line.c_str(), "%lf", &d);
-	zl=d;
+	rhoC=d;
+
+	{
+		static char dbgstr[500];
+		sprintf(dbgstr, "[Rank %d] triaxUTD_setup gal_catalog_path=\"%s\" zl=%f Dl=%f rhoC=%f\n", CurrentRankMPI, gal_catalog_path.c_str(), zl, Dl, rhoC);
+		MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
+	}
 
 	params_file.close();
 
@@ -134,7 +150,16 @@ void triaxUTD_setup()
 
 double triaxUTD_lnlikelihood(double c, double r200, double a, double b, double phi, double theta)
 {
-	if(a>b) return -INFINITY;
+/*
+	static int count = 0;
+	count++;
+	if((count%100)==0) {
+		static char dbgstr[200];
+		sprintf(dbgstr, "[Rank %d] triaxUTD_lnlikelihood called with c=%f r200=%f a=%f b=%f phi=%f theta=%f\n", CurrentRankMPI, c, r200, a, b, phi, theta);
+		MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
+	}*/
+
+	if(a>b) return /*-INFINITY*/1.0E30;
 	nfwModel.setParameters(c, r200, NAN, a, b, theta, phi, zl, Dl, rhoC);
 	nfwModel.calcConvergenceShear(gal_xy, gal_sigmaC, calculated_kappas, calculated_gamma1s, calculated_gamma2s);
 
@@ -147,5 +172,6 @@ double triaxUTD_lnlikelihood(double c, double r200, double a, double b, double p
 		lnlk += lnlikelihood(galaxy->eps1, galaxy->eps2, *p_kappa, *p_gamma1, *p_gamma2);
 	}
 
-	return lnlk;
+	return -lnlk;
 }
+
