@@ -101,7 +101,7 @@ struct JK_integrands_params {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa/sqrt(zeta*(1-params->one_minus_q2)*u);
+	return u*delkappa/(zeta*sqrt(1-params->one_minus_q2*u));
 }
 
 /*static*/ Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
@@ -109,7 +109,7 @@ struct JK_integrands_params {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa/pow(zeta*(1-params->one_minus_q2)*u, 1.5);
+	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 1.5));
 }
 
 /*static*/ Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
@@ -117,7 +117,7 @@ struct JK_integrands_params {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	return u*delkappa/pow(zeta*(1-params->one_minus_q2)*u, 2.5);
+	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 2.5));
 }
 
 // x2 and y2 should be prescaled by qx2
