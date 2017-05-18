@@ -1,5 +1,41 @@
+#include <gsl/gsl_errno.h>
 #include <cstring>
+#include <string>
+#include <vector>
 #include "common.h"
+
+// Handling GSL errors
+
+static std::vector<std::string> gsl_error_catch_identifiers_stack;
+
+static void gsl_error_handler(const char* reason, const char* file, int line, int gsl_errno)
+{
+	static char tmpstr[1024];
+	sprintf(tmpstr, "GSL error %d \"%s\" at (%s:%d)\nGSL error catch identifiers:", gsl_errno, reason, file, line);
+	for (int n = 1, auto i = gsl_error_catch_identifiers_stack.cbegin(); i != gsl_error_catch_identifiers_stack.cend(); i++, n++) {
+		sprintf(tmpstr+strlen(tmpstr), "\n[%d] %s", n, i->c_str());
+	}
+	throw std::runtime_error(tmpstr);
+}
+
+void init_gsl_error_handling__(void)
+{
+	gsl_error_catch_identifiers_stack.clear();
+}
+
+void begin_catch_gsl_errors__(const char* identifer)
+{
+	gsl_error_catch_identifiers_stack.push_back(std::string(identifier));
+	if (gsl_error_catch_identifiers_stack.size() == 1) {
+		gsl_set_error_handler(gsl_error_handler);
+	}
+}
+
+void end_catch_gsl_errors__(void)
+{
+	gsl_error_catch_identifiers_stack.pop_back();
+	if(gsl_error_catch_identifiers_stack.empty()) gsl_set_error_handler(NULL);
+}
 
 // TypedArraybaseobj implementation
 

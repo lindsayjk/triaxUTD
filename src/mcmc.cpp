@@ -106,6 +106,7 @@ static void triaxUTD_terminate()
 void triaxUTD_setup()
 {
 	std::set_terminate(triaxUTD_terminate);
+	init_gsl_error_handling();
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentRankMPI);
 	MPI_File_open(MPI_COMM_WORLD, "triaxutd.debug", MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &DebugFileMPI);

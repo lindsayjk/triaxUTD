@@ -100,7 +100,9 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
+	begin_catch_gsl_errors("K0_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	end_catch_gsl_errors();
 	return u*delkappa/(zeta*sqrt(1-params->one_minus_q2*u));
 }
 
@@ -108,7 +110,9 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
+	begin_catch_gsl_errors("K1_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	end_catch_gsl_errors();
 	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 1.5));
 }
 
@@ -116,7 +120,9 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
+	begin_catch_gsl_errors("K2_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	end_catch_gsl_errors();
 	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 2.5));
 }
 
@@ -137,20 +143,38 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	gsl_function integrand;
 	integrand.params = static_cast<void*>(&params);
 
+#if CATCH_GSL_ERRORS
+	static char JKintegrals_params_str[200];
+	sprintf(JKintegrals_params_str, "calcJKintegrals x2=%f y2=%f q2=%f sourceSigmaC=%f", x2, y2, q2, sourceSigmaC);
+	begin_catch_gsl_error(JKintegrals_params_str);
+#endif
+
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J0_integrand);
+	begin_catch_gsl_errors("J0");
 	J0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	end_catch_gsl_errors();
 
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J1_integrand);
+	begin_catch_gsl_errors("J1");
 	J1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	end_catch_gsl_errors();
 
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K0_integrand);
+	begin_catch_gsl_errors("K0");
 	K0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	end_catch_gsl_errors();
 
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K1_integrand);
+	begin_catch_gsl_errors("K1");
 	K1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	end_catch_gsl_errors();
 
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K2_integrand);
+	begin_catch_gsl_errors("K2");
 	K2 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	end_catch_gsl_errors();
+
+	end_catch_gsl_errors();
 }
 
 // x and y should be prescaled by qx

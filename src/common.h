@@ -2,10 +2,25 @@
 #include <stdexcept>
 #include <memory>
 
+#define CATCH_GSL_ERRORS 1
+
 #define throw_line_stringify_token(x) #x
 #define throw_line_stringify(x) throw_line_stringify_token(x)
 #define throw_line_line throw_line_stringify(__LINE__)
 #define throw_line(x) throw std::runtime_error("\"" x "\" at " __FILE__  ":" throw_line_line)
+
+void init_gsl_error_handling__(void);
+void begin_catch_gsl_errors__(const char* identifier);
+void end_catch_gsl_errors__(void);
+#if CATCH_GSL_ERRORS
+#define init_gsl_error_handling init_gsl_error_handling__
+#define begin_catch_gsl_errors begin_catch_gsl_errors__
+#define end_catch_gsl_errors end_catch_gsl_errors__
+#else
+#define init_gsl_error_handling(...)
+#define begin_catch_gsl_errors(...)
+#define end_catch_gsl_errors(...)
+#endif
 
 typedef double Scalar;
 
