@@ -146,7 +146,7 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 #if CATCH_GSL_ERRORS
 	static char JKintegrals_params_str[200];
 	sprintf(JKintegrals_params_str, "calcJKintegrals x2=%f y2=%f q2=%f sourceSigmaC=%f", x2, y2, q2, sourceSigmaC);
-	begin_catch_gsl_error(JKintegrals_params_str);
+	begin_catch_gsl_errors(JKintegrals_params_str);
 #endif
 
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J0_integrand);
