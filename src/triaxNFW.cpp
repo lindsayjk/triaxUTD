@@ -1,5 +1,6 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_deriv.h>
+#include <gsl/gsl_errno.h>
 #include "triaxNFW.h"
 
 // This is what scipy was doing internally (when a and b are finite)

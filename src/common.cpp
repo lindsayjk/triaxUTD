@@ -7,9 +7,11 @@
 // Handling GSL errors
 
 static std::vector<std::string> gsl_error_catch_identifiers_stack;
+static std::vector<int> gsl_error_catch_ignore_stack;
 
 static void gsl_error_handler(const char* reason, const char* file, int line, int gsl_errno)
 {
+	if(gsl_errno==gsl_error_catch_ignore_stack.back()) return;
 	static char tmpstr[1024];
 	sprintf(tmpstr, "GSL error %d \"%s\" at (%s:%d)\nGSL error catch identifiers:", gsl_errno, reason, file, line);
 	int n = 1;
@@ -22,11 +24,13 @@ static void gsl_error_handler(const char* reason, const char* file, int line, in
 void init_gsl_error_handling__(void)
 {
 	gsl_error_catch_identifiers_stack.clear();
+	gsl_error_catch_ignore_stack.clear();
 }
 
-void begin_catch_gsl_errors__(const char* identifier)
+void begin_catch_gsl_errors__(const char* identifier,int ignore_gsl_errno)
 {
 	gsl_error_catch_identifiers_stack.push_back(std::string(identifier));
+	gsl_error_catch_ignore_stack.push_back(ignore_gsl_errno);
 	if (gsl_error_catch_identifiers_stack.size() == 1) {
 		gsl_set_error_handler(gsl_error_handler);
 	}
@@ -35,6 +39,7 @@ void begin_catch_gsl_errors__(const char* identifier)
 void end_catch_gsl_errors__(void)
 {
 	gsl_error_catch_identifiers_stack.pop_back();
+	gsl_error_catch_ignore_stack.pop_back();
 	if(gsl_error_catch_identifiers_stack.empty()) gsl_set_error_handler(NULL);
 }
 

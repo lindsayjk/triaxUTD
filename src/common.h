@@ -10,7 +10,7 @@
 #define throw_line(x) throw std::runtime_error("\"" x "\" at " __FILE__  ":" throw_line_line)
 
 void init_gsl_error_handling__(void);
-void begin_catch_gsl_errors__(const char* identifier);
+void begin_catch_gsl_errors__(const char* identifier, int ignore_gsl_errno = 0);
 void end_catch_gsl_errors__(void);
 #if CATCH_GSL_ERRORS
 #define init_gsl_error_handling init_gsl_error_handling__
