@@ -101,6 +101,13 @@ static void triaxUTD_terminate()
 	std::abort();
 }
 
+void log_output(const char* str)
+{
+	static char outstr[256];
+	snprintf(outstr, 256, "[Rank %d] %s\n", CurrentRankMPI, str);
+	MPI_File_write_shared(DebugFileMPI, str, strlen(str), MPI_CHAR, MPI_STATUS_IGNORE);
+}
+
 // The following two functions will be called from Fortran / CosmoMC
 
 void triaxUTD_setup()

@@ -43,7 +43,6 @@ public:
 	}
 
 	// return critical surface density for cluster and source redshifts in solar masses/Mpc^2
-	// Performance Note: This calls into Cosmology.
 	Scalar calcSigmaC(Scalar z_source, Scalar D_source) const
 	{
 		Scalar Dls = (1.0/(1.0+z_source))*(D_source*(1.0+z_source)-Dl*(1.0+z));

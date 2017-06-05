@@ -8,6 +8,7 @@
 static inline Scalar quad_integrate(const gsl_function* f, double a, double b, gsl_integration_workspace* w)
 {
 	Scalar result, abserr;
+	size_t neval;
 	gsl_integration_qags(f, a, b, 1.49e-8, 1.49e-8, 50, w, &result, &abserr);
 	return result;
 }
@@ -146,7 +147,7 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 
 #if CATCH_GSL_ERRORS
 	static char JKintegrals_params_str[200];
-	sprintf(JKintegrals_params_str, "calcJKintegrals x2=%f y2=%f q2=%f sourceSigmaC=%f", x2, y2, q2, sourceSigmaC);
+	sprintf(JKintegrals_params_str, "calcJKintegrals x2=%f y2=%f q2=%f r200=%f c=%f sourceSigmaC=%f", x2, y2, q2, r200, c, sourceSigmaC);
 	begin_catch_gsl_errors(JKintegrals_params_str);
 #endif
 

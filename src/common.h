@@ -9,6 +9,8 @@
 #define throw_line_line throw_line_stringify(__LINE__)
 #define throw_line(x) throw std::runtime_error("\"" x "\" at " __FILE__  ":" throw_line_line)
 
+void log_output(const char* str); // Implemented in mcmc.cpp
+
 void init_gsl_error_handling__(void);
 void begin_catch_gsl_errors__(const char* identifier, int ignore_gsl_errno = 0);
 void end_catch_gsl_errors__(void);
