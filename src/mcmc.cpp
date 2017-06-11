@@ -1,4 +1,3 @@
-#include <mpi.h>
 #include <exception>
 #include <iostream>
 #include <fstream>
@@ -8,6 +7,7 @@
 #include "common.h"
 #include "constants.h"
 #include "mcmc.h"
+#include "mpi_logging.h"
 #include "triaxNFW.h"
 
 using namespace std;
@@ -22,9 +22,6 @@ static Scalar zl, Dl, rhoC;
 static ScalarArray1D calculated_kappas(nullptr);
 static ScalarArray1D calculated_gamma1s(nullptr);
 static ScalarArray1D calculated_gamma2s(nullptr);
-
-static MPI_File DebugFileMPI;
-static int CurrentRankMPI;
 
 static inline Scalar lnlikelihood(Scalar eps1, Scalar eps2, Scalar kappa, Scalar gamma1, Scalar gamma2)
 {
@@ -101,25 +98,15 @@ static void triaxUTD_terminate()
 	std::abort();
 }
 
-void log_output(const char* str)
-{
-	static char outstr[256];
-	snprintf(outstr, 256, "[Rank %d] %s\n", CurrentRankMPI, str);
-	MPI_File_write_shared(DebugFileMPI, str, strlen(str), MPI_CHAR, MPI_STATUS_IGNORE);
-}
-
 // The following two functions will be called from Fortran / CosmoMC
 
 void triaxUTD_setup()
 {
+	init_mpi_logging("triaxutd.log", "triaxutd.log");
 	std::set_terminate(triaxUTD_terminate);
 	init_gsl_error_handling();
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &CurrentRankMPI);
-	MPI_File_open(MPI_COMM_WORLD, "triaxutd.debug", MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &DebugFileMPI);
-	static char dbgstr[100];
-	sprintf(dbgstr, "[Rank %d] Process started\n", CurrentRankMPI);
-	MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
+	mpi_log(nullptr, "Process started");
 
 	ifstream params_file("triaxutd.params");
 	string line;
@@ -143,11 +130,7 @@ void triaxUTD_setup()
 	sscanf(line.c_str(), "%lf", &d);
 	rhoC=d;
 
-	{
-		static char dbgstr[500];
-		sprintf(dbgstr, "[Rank %d] triaxUTD_setup gal_catalog_path=\"%s\" zl=%f Dl=%f rhoC=%f\n", CurrentRankMPI, gal_catalog_path.c_str(), zl, Dl, rhoC);
-		MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
-	}
+	mpi_log(nullptr, "triaxUTD_setup gal_catalog_path=\"%s\" zl=%f Dl=%f rhoC=%f", gal_catalog_path.c_str(), zl, Dl, rhoC);
 
 	params_file.close();
 
@@ -162,9 +145,7 @@ double triaxUTD_lnlikelihood(double c, double r200, double a, double b, double p
 	static int count = 0;
 	count++;
 	if((count%100)==0) {
-		static char dbgstr[200];
-		sprintf(dbgstr, "[Rank %d] triaxUTD_lnlikelihood called with c=%f r200=%f a=%f b=%f phi=%f theta=%f\n", CurrentRankMPI, c, r200, a, b, phi, theta);
-		MPI_File_write_shared(DebugFileMPI, dbgstr, strlen(dbgstr), MPI_CHAR, MPI_STATUS_IGNORE);
+		mpi_log(nullptr, "triaxUTD_lnlikelihood called with c=%f r200=%f a=%f b=%f phi=%f theta=%f\n", c, r200, a, b, phi, theta);
 	}*/
 
 	if(a>b) return /*-INFINITY*/1.0E30;
