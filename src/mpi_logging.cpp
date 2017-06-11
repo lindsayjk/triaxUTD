@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <iostream>
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
@@ -66,8 +67,11 @@ static mpi_log_file mpi_open_log_file_internal(const char* filename, bool shared
 	MPI_File handle;
 	int ret;
 	generate_full_filename(filename, full_filename, 256, !shared);
-	ret = MPI_File_open(MPI_COMM_WORLD, full_filename, MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &handle);
-	if(ret != MPI_SUCCESS) return nullptr;
+	ret = MPI_File_open(shared?MPI_COMM_WORLD:MPI_COMM_SELF, full_filename, MPI_MODE_APPEND | MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &handle);
+	if(ret != MPI_SUCCESS) {
+		std::cerr << "Could not open MPI log file \"" << full_filename << "\", MPI error " << ret << "\n"; 
+		return nullptr;
+	}
 
 	mpi_log_file_s* f = new mpi_log_file_s;
 	f->handle = handle;
@@ -87,7 +91,7 @@ mpi_log_file mpi_open_log_file_shared(const char* filename)
 
 void mpi_close_log_file(mpi_log_file f)
 {
-	MPI_File_close(f->handle);
+	MPI_File_close(&f->handle);
 	delete f;
 }
 

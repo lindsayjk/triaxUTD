@@ -45,9 +45,11 @@ static bool HasSuccessfulK1IntegrandInfo = false;
 static IntegrandInfo LastSuccessfulK2IntegrandInfo;
 static bool HasSuccessfulK2IntegrandInfo = false;
 
-static void log_integrand_values(IntegrandInfo* info)
+static void log_integrand_values(int gsl_errno, IntegrandInfo* info)
 {
 	static int log_counter = 0;
+
+	info->gsl_errno = gsl_errno;
 
 	// Sort the integrand values by the independent variable in ascending order
 	std::sort(info->integrand_values.begin(), info->integrand_values.end(), [](const Vector2& a, const Vector2&  b) -> bool {
@@ -71,21 +73,21 @@ static void log_integrand_values(IntegrandInfo* info)
 	mpi_log_file lf = mpi_open_log_file(lfname);
 	mpi_log(lf, "Log of %s integral", integral_name);
 	mpi_log(lf, "GSL errno %d (%s)", info->gsl_errno, gsl_strerror(info->gsl_errno));
-	mpi_log(lf, "x2=%f y2=%f q2=%f r200=%f c=%f sourceSigmaC=%f", info->x2, info->y2, info->q2, info->r200, info->c, info->sourceSigmaC);
-	mpi_log(lf, "%d integrand values follow. Format is: u, integrand(u)", info->num_integrand_values);
+	mpi_log(lf, "x2=%g y2=%g q2=%g r200=%g c=%g sourceSigmaC=%g", info->x2, info->y2, info->q2, info->r200, info->c, info->sourceSigmaC);
+	mpi_log(lf, "%d integrand values follow. Format is: u, integrand(u)", (int)info->integrand_values.size());
 	for(const auto& value : info->integrand_values) {
-		mpi_log(lf, "%f, %f", value.x, value.y);
+		mpi_log(lf, "%g, %g", value.x, value.y);
 	}
 	mpi_close_log_file(lf);
 }
 
 static void log_last_successful_integrand_values()
 {
-	if(HasSuccessfulJ0IntegrandInfo) log_integrand_values(&LastSuccessfulJ0IntegrandInfo);
-	if(HasSuccessfulJ1IntegrandInfo) log_integrand_values(&LastSuccessfulJ1IntegrandInfo);
-	if(HasSuccessfulK0IntegrandInfo) log_integrand_values(&LastSuccessfulK0IntegrandInfo);
-	if(HasSuccessfulK1IntegrandInfo) log_integrand_values(&LastSuccessfulK1IntegrandInfo);
-	if(HasSuccessfulK2IntegrandInfo) log_integrand_values(&LastSuccessfulK2IntegrandInfo);
+	if(HasSuccessfulJ0IntegrandInfo) log_integrand_values(0, &LastSuccessfulJ0IntegrandInfo);
+	if(HasSuccessfulJ1IntegrandInfo) log_integrand_values(0, &LastSuccessfulJ1IntegrandInfo);
+	if(HasSuccessfulK0IntegrandInfo) log_integrand_values(0, &LastSuccessfulK0IntegrandInfo);
+	if(HasSuccessfulK1IntegrandInfo) log_integrand_values(0, &LastSuccessfulK1IntegrandInfo);
+	if(HasSuccessfulK2IntegrandInfo) log_integrand_values(0, &LastSuccessfulK2IntegrandInfo);
 }
 
 static bool integral_error_handler(int gsl_errno, void* info)
@@ -94,7 +96,7 @@ static bool integral_error_handler(int gsl_errno, void* info)
 	if(gsl_errno==XX) return false; // ignore error XX
 	*/
 
-	log_integrand_values(static_cast<IntegrandInfo*>(info));
+	log_integrand_values(gsl_errno, static_cast<IntegrandInfo*>(info));
 	log_last_successful_integrand_values();
 
 	return true;
