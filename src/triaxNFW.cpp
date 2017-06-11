@@ -1,7 +1,148 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_errno.h>
+#include <cstdlib>
+#include <vector>
+#include <algorithm>
 #include "triaxNFW.h"
+#include "mpi_logging.h"
+
+// Code for debugging integrals and logging errors and integrand values
+#define CATCH_INTEGRAL_ERRORS CATCH_GSL_ERRORS
+
+#if CATCH_INTEGRAL_ERRORS
+enum IntegralType {
+	IntegralNone,
+	IntegralJ0,
+	IntegralJ1,
+	IntegralK0,
+	IntegralK1,
+	IntegralK2
+};
+
+struct IntegrandInfo {
+	IntegralType integral_type;
+	int gsl_errno;
+	Scalar x2, y2, q2, r200, c, sourceSigmaC;
+	std::vector<Vector2> integrand_values;
+};
+
+static void reset_integrandinfo(IntegrandInfo& info, IntegralType type)
+{
+	info.integral_type = type;
+	info.integrand_values.clear();
+	info.gsl_errno = 0;
+}
+
+static IntegrandInfo LastSuccessfulJ0IntegrandInfo;
+static bool HasSuccessfulJ0IntegrandInfo = false;
+static IntegrandInfo LastSuccessfulJ1IntegrandInfo;
+static bool HasSuccessfulJ1IntegrandInfo = false;
+static IntegrandInfo LastSuccessfulK0IntegrandInfo;
+static bool HasSuccessfulK0IntegrandInfo = false;
+static IntegrandInfo LastSuccessfulK1IntegrandInfo;
+static bool HasSuccessfulK1IntegrandInfo = false;
+static IntegrandInfo LastSuccessfulK2IntegrandInfo;
+static bool HasSuccessfulK2IntegrandInfo = false;
+
+static void log_integrand_values(IntegrandInfo* info)
+{
+	static int log_counter = 0;
+
+	// Sort the integrand values by the independent variable in ascending order
+	std::sort(info->integrand_values.begin(), info->integrand_values.end(), [](const Vector2& a, const Vector2&  b) -> bool {
+		return a.x<b.x;
+	});
+
+	const char* integral_name;
+	switch (info->integral_type) {
+	case IntegralJ0: integral_name="J0"; break;
+	case IntegralJ1: integral_name="J1"; break;
+	case IntegralK0: integral_name="K0"; break;
+	case IntegralK1: integral_name="K1"; break;
+	case IntegralK2: integral_name="K2"; break;
+	default: integral_name="Unknown"; break;
+	}
+
+	char lfname[64];
+	snprintf(lfname, 64, "%s.%d.integral_info", integral_name, log_counter);
+	log_counter++;
+
+	mpi_log_file lf = mpi_open_log_file(lfname);
+	mpi_log(lf, "Log of %s integral", integral_name);
+	mpi_log(lf, "GSL errno %d (%s)", info->gsl_errno, gsl_strerror(info->gsl_errno));
+	mpi_log(lf, "x2=%f y2=%f q2=%f r200=%f c=%f sourceSigmaC=%f", info->x2, info->y2, info->q2, info->r200, info->c, info->sourceSigmaC);
+	mpi_log(lf, "%d integrand values follow. Format is: u, integrand(u)", info->num_integrand_values);
+	for(const auto& value : info->integrand_values) {
+		mpi_log(lf, "%f, %f", value.x, value.y);
+	}
+	mpi_close_log_file(lf);
+}
+
+static void log_last_successful_integrand_values()
+{
+	if(HasSuccessfulJ0IntegrandInfo) log_integrand_values(&LastSuccessfulJ0IntegrandInfo);
+	if(HasSuccessfulJ1IntegrandInfo) log_integrand_values(&LastSuccessfulJ1IntegrandInfo);
+	if(HasSuccessfulK0IntegrandInfo) log_integrand_values(&LastSuccessfulK0IntegrandInfo);
+	if(HasSuccessfulK1IntegrandInfo) log_integrand_values(&LastSuccessfulK1IntegrandInfo);
+	if(HasSuccessfulK2IntegrandInfo) log_integrand_values(&LastSuccessfulK2IntegrandInfo);
+}
+
+static bool integral_error_handler(int gsl_errno, void* info)
+{
+	/*
+	if(gsl_errno==XX) return false; // ignore error XX
+	*/
+
+	log_integrand_values(static_cast<IntegrandInfo*>(info));
+	log_last_successful_integrand_values();
+
+	return true;
+}
+
+static inline void insert_integrand_info_value(const IntegrandInfo* info, Scalar u, Scalar result)
+{
+	Vector2 v;
+	v.x = u;
+	v.y = result;
+	(const_cast<IntegrandInfo*>(info))->integrand_values.push_back(v);
+}
+
+static inline void save_successful_integral_info(const IntegrandInfo& info)
+{
+	if(info.gsl_errno!=0) return;
+	if (info.integral_type == IntegralJ0) {
+		if(HasSuccessfulJ0IntegrandInfo) return;
+		LastSuccessfulJ0IntegrandInfo = info;
+		HasSuccessfulJ0IntegrandInfo = true;
+	}
+	else if (info.integral_type == IntegralJ1) {
+		if(HasSuccessfulJ1IntegrandInfo) return;
+		LastSuccessfulJ1IntegrandInfo = info;
+		HasSuccessfulJ1IntegrandInfo = true;
+	}
+	else if (info.integral_type == IntegralK0) {
+		if(HasSuccessfulK0IntegrandInfo) return;
+		LastSuccessfulK0IntegrandInfo = info;
+		HasSuccessfulK0IntegrandInfo = true;
+	}
+	else if (info.integral_type == IntegralK1) {
+		if(HasSuccessfulK1IntegrandInfo) return;
+		LastSuccessfulK1IntegrandInfo = info;
+		HasSuccessfulK1IntegrandInfo = true;
+	}
+	else if (info.integral_type == IntegralK2) {
+		if(HasSuccessfulK2IntegrandInfo) return;
+		LastSuccessfulK2IntegrandInfo = info;
+		HasSuccessfulK2IntegrandInfo = true;
+	}
+}
+
+#else
+#define reset_integrandinfo(...)
+#define log_integrand_values(...)
+#define insert_integrand_info_value(...)
+#endif
 
 // This is what scipy was doing internally (when a and b are finite)
 // a and b should be finite
@@ -75,6 +216,9 @@ static inline Scalar calc_zeta_squared(Scalar u, Scalar x2, Scalar y2, Scalar on
 // x2 and y2 should be prescaled by qx2
 struct JK_integrands_params {
 	triaxNFW* lens;
+#if CATCH_INTEGRAL_ERRORS
+	IntegrandInfo integrand_info;
+#endif
 	Scalar x2, y2, one_minus_q2, sourceSigmaC;
 	gsl_function sph_convergence_function;
 };
@@ -84,13 +228,17 @@ struct JK_integrands_params {
 /*static*/ Scalar triaxNFW::J0_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
-	return params->lens->calcConvergence(zeta, params->sourceSigmaC)/sqrt(1-params->one_minus_q2*u);
+	Scalar result = params->lens->calcConvergence(zeta, params->sourceSigmaC)/sqrt(1-params->one_minus_q2*u);
+	insert_integrand_info_value(&params->integrand_info, u, result);
+	return result;
 }
 
 /*static*/ Scalar triaxNFW::J1_integrand(Scalar u, const JK_integrands_params* params)
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
-	return params->lens->calcConvergence(zeta, params->sourceSigmaC)/pow(1-params->one_minus_q2*u, 1.5);
+	Scalar result = params->lens->calcConvergence(zeta, params->sourceSigmaC)/pow(1-params->one_minus_q2*u, 1.5);
+	insert_integrand_info_value(&params->integrand_info, u, result);
+	return result;
 }
 
 /*static*/ Scalar triaxNFW::sph_convergence_function(Scalar u, const JK_integrands_params* params)
@@ -105,7 +253,9 @@ struct JK_integrands_params {
 	begin_catch_gsl_errors("K0_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
 	end_catch_gsl_errors();
-	return u*delkappa/(zeta*sqrt(1-params->one_minus_q2*u));
+	Scalar result = u*delkappa/(zeta*sqrt(1-params->one_minus_q2*u));
+	insert_integrand_info_value(&params->integrand_info, u, result);
+	return result;
 }
 
 /*static*/ Scalar triaxNFW::K1_integrand(Scalar u, const JK_integrands_params* params)
@@ -115,7 +265,9 @@ struct JK_integrands_params {
 	begin_catch_gsl_errors("K1_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
 	end_catch_gsl_errors();
-	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 1.5));
+	Scalar result = u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 1.5));
+	insert_integrand_info_value(&params->integrand_info, u, result);
+	return result;
 }
 
 /*static*/ Scalar triaxNFW::K2_integrand(Scalar u, const JK_integrands_params* params)
@@ -125,7 +277,9 @@ struct JK_integrands_params {
 	begin_catch_gsl_errors("K2_integrand -> deriv sph_convergence_function");
 	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
 	end_catch_gsl_errors();
-	return u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 2.5));
+	Scalar result = u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 2.5));
+	insert_integrand_info_value(&params->integrand_info, u, result);
+	return result;
 }
 
 // x2 and y2 should be prescaled by qx2
@@ -141,6 +295,14 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	params.sourceSigmaC = sourceSigmaC;
 	params.sph_convergence_function.function = reinterpret_cast<integrand_fn>(&triaxNFW::sph_convergence_function);
 	params.sph_convergence_function.params = static_cast<void*>(&params);
+#if CATCH_INTEGRAL_ERRORS
+	params.integrand_info.x2 = x2;
+	params.integrand_info.y2 = y2;
+	params.integrand_info.q2 = q2;
+	params.integrand_info.r200 = r200;
+	params.integrand_info.c = c;
+	params.integrand_info.sourceSigmaC = sourceSigmaC;
+#endif
 
 	gsl_function integrand;
 	integrand.params = static_cast<void*>(&params);
@@ -151,30 +313,40 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	begin_catch_gsl_errors(JKintegrals_params_str);
 #endif
 
+	reset_integrandinfo(params.integrand_info, IntegralJ0);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J0_integrand);
-	begin_catch_gsl_errors("J0");
+	begin_catch_gsl_errors("J0", 0, integral_error_handler, &params.integrand_info);
 	J0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
+	save_successful_integral_info(params.integrand_info);
 
+	reset_integrandinfo(params.integrand_info, IntegralJ1);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J1_integrand);
-	begin_catch_gsl_errors("J1");
+	begin_catch_gsl_errors("J1", 0, integral_error_handler, &params.integrand_info);
 	J1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
+	save_successful_integral_info(params.integrand_info);
 
+	reset_integrandinfo(params.integrand_info, IntegralK0);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K0_integrand);
-	begin_catch_gsl_errors("K0");
+	begin_catch_gsl_errors("K0", 0, integral_error_handler, &params.integrand_info);
 	K0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
+	save_successful_integral_info(params.integrand_info);
 
+	reset_integrandinfo(params.integrand_info, IntegralK1);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K1_integrand);
-	begin_catch_gsl_errors("K1");
+	begin_catch_gsl_errors("K1", 0, integral_error_handler, &params.integrand_info);
 	K1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
+	save_successful_integral_info(params.integrand_info);
 
+	reset_integrandinfo(params.integrand_info, IntegralK2);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K2_integrand);
-	begin_catch_gsl_errors("K2");
+	begin_catch_gsl_errors("K2", 0, integral_error_handler, &params.integrand_info);
 	K2 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
+	save_successful_integral_info(params.integrand_info);
 
 	end_catch_gsl_errors();
 }
