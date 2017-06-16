@@ -24,6 +24,8 @@ struct IntegrandInfo {
 	IntegralType integral_type;
 	int gsl_errno;
 	Scalar x2, y2, q2, r200, c, sourceSigmaC;
+	Scalar a, b, theta, phi, z, Dl, rhoC;
+	Scalar f, A, B, C, qX, qY;
 	std::vector<Vector2> integrand_values;
 };
 
@@ -74,6 +76,8 @@ static void log_integrand_values(int gsl_errno, IntegrandInfo* info)
 	mpi_log(lf, "Log of %s integral", integral_name);
 	mpi_log(lf, "GSL errno %d (%s)", info->gsl_errno, gsl_strerror(info->gsl_errno));
 	mpi_log(lf, "x2=%g y2=%g q2=%g r200=%g c=%g sourceSigmaC=%g", info->x2, info->y2, info->q2, info->r200, info->c, info->sourceSigmaC);
+	mpi_log(lf, "a=%g b=%g theta=%g phi=%g z=%g Dl=%g rhoC=%g", info->a, info->b, info->theta, info->phi, info->z, info->Dl, info->rhoC);
+	mpi_log(lf, "f=%g A=%g B=%g C=%g qX=%g qY=%g", info->f, info->A, info->B, info->C, info->qX, info->qY);
 	mpi_log(lf, "%d integrand values follow. Format is: u, integrand(u)", (int)info->integrand_values.size());
 	for(const auto& value : info->integrand_values) {
 		mpi_log(lf, "%g, %g", value.x, value.y);
@@ -92,9 +96,7 @@ static void log_last_successful_integrand_values()
 
 static bool integral_error_handler(int gsl_errno, void* info)
 {
-	/*
-	if(gsl_errno==XX) return false; // ignore error XX
-	*/
+	if(gsl_errno==18) return false; // ignore roundoff error
 
 	log_integrand_values(gsl_errno, static_cast<IntegrandInfo*>(info));
 	log_last_successful_integrand_values();
@@ -146,13 +148,22 @@ static inline void save_successful_integral_info(const IntegrandInfo& info)
 #define insert_integrand_info_value(...)
 #endif
 
+// This is an alternative to GSL
+static inline Scalar calc_derivative(const gsl_function* f, Scalar x, Scalar width)
+{
+	Scalar left = f->function(x-width/2, f->params);
+	Scalar right = f->function(x+width/2, f->params);
+	Scalar derivative = (right-left)/width;
+	return derivative;
+}
+
 // This is what scipy was doing internally (when a and b are finite)
 // a and b should be finite
 static inline Scalar quad_integrate(const gsl_function* f, double a, double b, gsl_integration_workspace* w)
 {
 	Scalar result, abserr;
 	size_t neval;
-	gsl_integration_qags(f, a, b, 1.49e-8, 1.49e-8, 50, w, &result, &abserr);
+	gsl_integration_qags(f, a, b, 0, 1e-5, 500, w, &result, &abserr);
 	return result;
 }
 
@@ -186,6 +197,10 @@ static inline void calc_qX2_qY2(Scalar f, Scalar A, Scalar B, Scalar C, Scalar& 
 void triaxNFW::setParameters(Scalar c, Scalar r200, Scalar M200, Scalar a, Scalar b, Scalar theta, Scalar phi, Scalar z, Scalar Dl, Scalar rhoC)
 {
 	sphNFW::setParameters(c, r200, M200, z, Dl, rhoC);
+	this->a = a;
+	this->b = b;
+	this->theta = theta;
+	this->phi = phi;
 	calc_fABC(theta, phi, a, b, f, A, B, C);
 	inv_sqrt_f = 1/sqrt(f);
 	calc_qX2_qY2(f, A, B, C, qX2, qY2);
@@ -252,9 +267,10 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
-	begin_catch_gsl_errors("K0_integrand -> deriv sph_convergence_function");
-	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	end_catch_gsl_errors();
+	//begin_catch_gsl_errors("K0_integrand -> deriv sph_convergence_function");
+	//gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	//end_catch_gsl_errors();
+	delkappa = calc_derivative(&params->sph_convergence_function, zeta, 1e-5);
 	Scalar result = u*delkappa/(zeta*sqrt(1-params->one_minus_q2*u));
 	insert_integrand_info_value(&params->integrand_info, u, result);
 	return result;
@@ -264,9 +280,10 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
-	begin_catch_gsl_errors("K1_integrand -> deriv sph_convergence_function");
-	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	end_catch_gsl_errors();
+	//begin_catch_gsl_errors("K1_integrand -> deriv sph_convergence_function");
+	//gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	//end_catch_gsl_errors();
+	delkappa = calc_derivative(&params->sph_convergence_function, zeta, 1e-5);
 	Scalar result = u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 1.5));
 	insert_integrand_info_value(&params->integrand_info, u, result);
 	return result;
@@ -276,9 +293,10 @@ struct JK_integrands_params {
 {
 	Scalar zeta = sqrt(calc_zeta_squared(u, params->x2, params->y2, params->one_minus_q2));
 	Scalar delkappa, delkappa_abserr;
-	begin_catch_gsl_errors("K2_integrand -> deriv sph_convergence_function");
-	gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
-	end_catch_gsl_errors();
+	//begin_catch_gsl_errors("K2_integrand -> deriv sph_convergence_function");
+	//gsl_deriv_central(&params->sph_convergence_function, zeta, 1e-5, &delkappa, &delkappa_abserr);
+	//end_catch_gsl_errors();
+	delkappa = calc_derivative(&params->sph_convergence_function, zeta, 1e-5);
 	Scalar result = u*delkappa/(zeta*pow(1-params->one_minus_q2*u, 2.5));
 	insert_integrand_info_value(&params->integrand_info, u, result);
 	return result;
@@ -304,6 +322,19 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	params.integrand_info.r200 = r200;
 	params.integrand_info.c = c;
 	params.integrand_info.sourceSigmaC = sourceSigmaC;
+	params.integrand_info.f = f;
+	params.integrand_info.A = A;
+	params.integrand_info.B = B;
+	params.integrand_info.C = C;
+	params.integrand_info.qX = qX;
+	params.integrand_info.qY = qY;
+	params.integrand_info.a = a;
+	params.integrand_info.b = b;
+	params.integrand_info.theta = theta;
+	params.integrand_info.phi = phi;
+	params.integrand_info.z = z;
+	params.integrand_info.Dl = Dl;
+	params.integrand_info.rhoC = rhoC; 
 #endif
 
 	gsl_function integrand;

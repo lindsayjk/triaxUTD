@@ -15,6 +15,7 @@ using namespace std;
 static string gal_catalog_path;
 static CatalogEntry* gal_catalog = nullptr;
 static Vector2Array1D gal_xy(nullptr);
+static Vector2Array1D gal_eps(nullptr);
 static ScalarArray1D gal_sigmaC(nullptr);
 static int num_galaxies;
 static triaxNFW nfwModel;
@@ -66,18 +67,41 @@ static void read_galaxy_catalog()
 
 static void populate_global_arrays_from_galaxy_catalog()
 {
-	calculated_kappas.reset(new ScalarArray1Dobj(num_galaxies));
-	calculated_gamma1s.reset(new ScalarArray1Dobj(num_galaxies));
-	calculated_gamma2s.reset(new ScalarArray1Dobj(num_galaxies));
-	gal_xy.reset(new Vector2Array1Dobj(num_galaxies));
-	gal_sigmaC.reset(new ScalarArray1Dobj(num_galaxies));
+	const Scalar cutoff_radius = 0.5;
+	int num_valid_galaxies = 0;
+	int n;
+	for(n = 0;n < num_galaxies; n++) {
+		Scalar x = gal_catalog[n].x;
+		Scalar y = gal_catalog[n].y;
+		if(sqrt((x*x)+(y*y))>=cutoff_radius) {
+			num_valid_galaxies++;
+		} else {
+			gal_catalog[n].x=-1;
+			gal_catalog[n].y=-1;
+		}
+	}
+	mpi_log(nullptr, "Filtered out %d/%d galaxies within %g Mpc", num_galaxies-num_valid_galaxies, num_galaxies, cutoff_radius);
+	calculated_kappas.reset(new ScalarArray1Dobj(num_valid_galaxies));
+	calculated_gamma1s.reset(new ScalarArray1Dobj(num_valid_galaxies));
+	calculated_gamma2s.reset(new ScalarArray1Dobj(num_valid_galaxies));
+	gal_xy.reset(new Vector2Array1Dobj(num_valid_galaxies));
+	gal_eps.reset(new Vector2Array1Dobj(num_valid_galaxies));
+	gal_sigmaC.reset(new ScalarArray1Dobj(num_valid_galaxies));
 	Vector2* xy = gal_xy->v;
+	Vector2* eps = gal_eps->v;
 	Scalar* p_sigmaC = gal_sigmaC->v;
-	for (int n = 0; n < num_galaxies; n++, xy++, p_sigmaC++) {
+	for (n = 0; n < num_galaxies; n++) {
+		if(gal_catalog[n].x<0) continue;
 		xy->x = gal_catalog[n].x;
 		xy->y = gal_catalog[n].y;
+		eps->x = gal_catalog[n].eps1;
+		eps->y = gal_catalog[n].eps2;
 		*p_sigmaC = nfwModel.calcSigmaC(gal_catalog[n].zs, gal_catalog[n].Ds);
+		xy++;
+		eps++;
+		p_sigmaC++;
 	}
+	num_galaxies = num_valid_galaxies;
 }
 
 static void triaxUTD_terminate()
@@ -153,12 +177,14 @@ double triaxUTD_lnlikelihood(double c, double r200, double a, double b, double p
 	nfwModel.calcConvergenceShear(gal_xy, gal_sigmaC, calculated_kappas, calculated_gamma1s, calculated_gamma2s);
 
 	Scalar lnlk = 0.0;
-	CatalogEntry* galaxy = gal_catalog;
+	//CatalogEntry* galaxy = gal_catalog;
+	Vector2* p_eps = gal_eps->v;
 	Scalar* p_kappa = calculated_kappas->v;
 	Scalar* p_gamma1 = calculated_gamma1s->v;
 	Scalar* p_gamma2 = calculated_gamma2s->v;
-	for (int n = 0; n < num_galaxies; n++, galaxy++, p_kappa++, p_gamma1++, p_gamma2++) {
-		lnlk += lnlikelihood(galaxy->eps1, galaxy->eps2, *p_kappa, *p_gamma1, *p_gamma2);
+	for (int n = 0; n < num_galaxies; n++, /*galaxy++,*/ p_eps++,  p_kappa++, p_gamma1++, p_gamma2++) {
+//		lnlk += lnlikelihood(galaxy->eps1, galaxy->eps2, *p_kappa, *p_gamma1, *p_gamma2);
+		lnlk += lnlikelihood(p_eps->x, p_eps->y, *p_kappa, *p_gamma1, *p_gamma2);
 	}
 
 	return -lnlk;
