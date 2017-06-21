@@ -1,0 +1,20 @@
+Build Instructions
+------------------
+
+1. Make sure GSL is loaded by running: module load gsl
+2. Go to the src/ directory and run make
+3. Run: cp triaxutd.mod triaxUTD.a <path to CosmoMC directory>/source
+   This copies the triaxUTD build and Fortran module file to CosmoMC's source directory.
+4. Copy everything in the cosmomc/ directory here to CosmoMC's main directory.
+   This will copy the modified Makefile and driver.f90 and calclike.f90 files.
+5. Change directory to CosmoMC's main directory and run make.
+
+Re-building Instrunctions
+-------------------------
+
+1. After changes to triaxUTD, follow steps 1-3 as above.
+2. Change directory to CosmoMC's main directory.
+3. Do: rm cosmomc
+   This removes the cosmomc build product and lets make re-link with the updated triaxUTD files.
+4. Run make.
+
