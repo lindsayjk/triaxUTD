@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <memory>
 
-#define CATCH_GSL_ERRORS 1
+#define CATCH_GSL_ERRORS 0
 
 #define throw_line_stringify_token(x) #x
 #define throw_line_stringify(x) throw_line_stringify_token(x)
