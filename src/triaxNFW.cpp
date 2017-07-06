@@ -146,6 +146,7 @@ static inline void save_successful_integral_info(const IntegrandInfo& info)
 #define reset_integrandinfo(...)
 #define log_integrand_values(...)
 #define insert_integrand_info_value(...)
+#define save_successful_integral_info(...)
 #endif
 
 // This is an alternative to GSL
@@ -164,6 +165,44 @@ static inline Scalar quad_integrate(const gsl_function* f, double a, double b, g
 	Scalar result, abserr;
 	size_t neval;
 	gsl_integration_qags(f, a, b, 0, 1e-5, 500, w, &result, &abserr);
+	return result;
+}
+
+// This is an alternative to GSL
+// Integrate using Simpson's rule.
+// Breaks the interval [from, to] into sub-intervals of length at most "width"
+// and does Simpson's rule on each sub-interval.
+static inline Scalar simpson_integrate(const gsl_function* f, Scalar from, Scalar to, Scalar width)
+{
+	Scalar signed_total_width = to-from;
+	Scalar total_width = fabs(signed_total_width);
+	int num_slices = ceil(total_width/width);
+	Scalar result = 0.0;
+	Scalar a, b, f_a, f_b, f_mid;
+	b = from;
+	f_b = f->function(b, f->params);
+	for(int n=0;n<num_slices;n++) {
+		// Integrate using Simposon's rule from a to b
+		// Calculate both limits explicitly to prevent rounding errors from accumulating
+		a = b;
+		f_a = f_b;
+		if(isnan(f_a)) {
+			GSL_ERROR_VAL("simpson integration f_a is NAN", 1100, NAN);
+		}
+		b = from+(n+1)*signed_total_width/num_slices;
+		f_b = f->function(b, f->params);
+		if(isnan(f_b)) {
+			GSL_ERROR_VAL("simpson integration f_b is NAN", 1101, NAN);
+		}
+		f_mid = f->function((a+b)/2, f->params);
+		if(isnan(f_mid)) {
+			GSL_ERROR_VAL("simpson integration f_mid is NAN", 1102, NAN);
+		}
+		result += (f_a + 4*f_mid + f_b)*(b-a)/6;
+	}
+	if(isnan(result)) {
+		GSL_ERROR_VAL("simpson integration result is NAN", 1103, NAN);
+	}
 	return result;
 }
 
@@ -363,21 +402,24 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	reset_integrandinfo(params.integrand_info, IntegralK0);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K0_integrand);
 	begin_catch_gsl_errors("K0", 0, integral_error_handler, &params.integrand_info);
-	K0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+//	K0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	K0 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
 
 	reset_integrandinfo(params.integrand_info, IntegralK1);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K1_integrand);
 	begin_catch_gsl_errors("K1", 0, integral_error_handler, &params.integrand_info);
-	K1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+//	K1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	K1 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
 
 	reset_integrandinfo(params.integrand_info, IntegralK2);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K2_integrand);
 	begin_catch_gsl_errors("K2", 0, integral_error_handler, &params.integrand_info);
-	K2 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+//	K2 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
+	K2 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
 
