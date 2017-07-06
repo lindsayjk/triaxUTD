@@ -76,8 +76,8 @@ static void populate_global_arrays_from_galaxy_catalog()
 		if(sqrt((x*x)+(y*y))>=cutoff_radius) {
 			num_valid_galaxies++;
 		} else {
-			gal_catalog[n].x=-1;
-			gal_catalog[n].y=-1;
+			gal_catalog[n].x=NAN;
+			gal_catalog[n].y=NAN;
 		}
 	}
 	mpi_log(nullptr, "Filtered out %d/%d galaxies within %g Mpc", num_galaxies-num_valid_galaxies, num_galaxies, cutoff_radius);
@@ -91,7 +91,7 @@ static void populate_global_arrays_from_galaxy_catalog()
 	Vector2* eps = gal_eps->v;
 	Scalar* p_sigmaC = gal_sigmaC->v;
 	for (n = 0; n < num_galaxies; n++) {
-		if(gal_catalog[n].x<0) continue;
+		if(std::isnan(gal_catalog[n].x)) continue;
 		xy->x = gal_catalog[n].x;
 		xy->y = gal_catalog[n].y;
 		eps->x = gal_catalog[n].eps1;
@@ -102,6 +102,18 @@ static void populate_global_arrays_from_galaxy_catalog()
 		p_sigmaC++;
 	}
 	num_galaxies = num_valid_galaxies;
+
+	xy = gal_xy->v;
+	eps = gal_eps->v;
+	p_sigmaC = gal_sigmaC->v;
+	for(n = 0;n < num_galaxies;n++) {
+		if(sqrt(xy->x*xy->x+xy->y*xy->y)<cutoff_radius) {
+			mpi_log(nullptr, "Found galaxy %d/%d inside cutoff radius after filtering! x=%g, y=%g, eps=(%g,%g) sigmaC=%g",n+1,num_galaxies,xy->x,xy->y,eps->x,eps->y,*p_sigmaC);
+		}
+		xy++;
+		eps++;
+		p_sigmaC++;
+	}
 }
 
 static void triaxUTD_terminate()
