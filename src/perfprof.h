@@ -1,7 +1,7 @@
 #pragma once
 // Performance profiling macros and utilities
 
-#define ENABLE_PERF_PROF 1
+#define ENABLE_PERF_PROF 0
 
 #if ENABLE_PERF_PROF
 
@@ -24,7 +24,7 @@ static inline long long get_perf_prof_duration(std::chrono::time_point<std::chro
 
 #define DECLARE_PERF_PROF_COUNTER(counter)
 #define RESET_PERF_PROF_COUNTER(counter)
-#define PERF_PROF_COUNTER_NS (-1LL)
+#define PERF_PROF_COUNTER_NS(counter) (-1LL)
 #define START_PERF_PROF(name)
 #define END_PERF_PROF(name)
 #define GET_PERF_PROF_DURATION(name) (-1LL)
