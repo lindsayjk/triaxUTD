@@ -523,12 +523,14 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DR
 		*p_gamma2_out=gamma2;
 	}
 	END_PERF_PROF(calcConvergenceShear);
-	mpi_log(NULL, "1 iteration of triaxNFW::calcConvergenceShear took %lld ns, %d iterations of calcIntermediateConvergenceShear took %lld ns", GET_PERF_PROF_DURATION(calcConvergenceShear), n, PERF_PROF_COUNTER_NS(calcIntermediateConvergenceShear));
-	mpi_log(NULL, "\tAll iterations of J0,J1,K0,K1,K2 integrals took %lld %lld %lld %lld %lld (ns)",
-		PERF_PROF_COUNTER_NS(J0),
-		PERF_PROF_COUNTER_NS(J1),
-		PERF_PROF_COUNTER_NS(K0),
-		PERF_PROF_COUNTER_NS(K1),
-		PERF_PROF_COUNTER_NS(K2)
-	);
+	if(ENABLE_PERF_PROF) {
+		mpi_log(NULL, "1 iteration of triaxNFW::calcConvergenceShear took %lld ns, %d iterations of calcIntermediateConvergenceShear took %lld ns", GET_PERF_PROF_DURATION(calcConvergenceShear), n, PERF_PROF_COUNTER_NS(calcIntermediateConvergenceShear));
+		mpi_log(NULL, "\tAll iterations of J0,J1,K0,K1,K2 integrals took %lld %lld %lld %lld %lld (ns)",
+			PERF_PROF_COUNTER_NS(J0),
+			PERF_PROF_COUNTER_NS(J1),
+			PERF_PROF_COUNTER_NS(K0),
+			PERF_PROF_COUNTER_NS(K1),
+			PERF_PROF_COUNTER_NS(K2)
+		);
+	}
 }
