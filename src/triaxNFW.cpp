@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "triaxNFW.h"
 #include "mpi_logging.h"
+#include "perfprof.h"
 
 // Code for debugging integrals and logging errors and integrand values
 #define CATCH_INTEGRAL_ERRORS CATCH_GSL_ERRORS
@@ -147,6 +148,14 @@ static inline void save_successful_integral_info(const IntegrandInfo& info)
 #define log_integrand_values(...)
 #define insert_integrand_info_value(...)
 #define save_successful_integral_info(...)
+#endif
+
+#if ENABLE_PERF_PROF
+DECLARE_PERF_PROF_COUNTER(J0);
+DECLARE_PERF_PROF_COUNTER(J1);
+DECLARE_PERF_PROF_COUNTER(K0);
+DECLARE_PERF_PROF_COUNTER(K1);
+DECLARE_PERF_PROF_COUNTER(K2);
 #endif
 
 // This is an alternative to GSL
@@ -385,20 +394,27 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	begin_catch_gsl_errors(JKintegrals_params_str);
 #endif
 
+	START_PERF_PROF(J0);
 	reset_integrandinfo(params.integrand_info, IntegralJ0);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J0_integrand);
 	begin_catch_gsl_errors("J0", 0, integral_error_handler, &params.integrand_info);
 	J0 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
+	END_PERF_PROF(J0);
+	ACCUM_PERF_PROF_DURATION(J0, J0);
 
+	START_PERF_PROF(J1);
 	reset_integrandinfo(params.integrand_info, IntegralJ1);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::J1_integrand);
 	begin_catch_gsl_errors("J1", 0, integral_error_handler, &params.integrand_info);
 	J1 = quad_integrate(&integrand, 0, 1, wksp) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
+	END_PERF_PROF(J1);
+	ACCUM_PERF_PROF_DURATION(J1, J1);
 
+	START_PERF_PROF(K0);
 	reset_integrandinfo(params.integrand_info, IntegralK0);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K0_integrand);
 	begin_catch_gsl_errors("K0", 0, integral_error_handler, &params.integrand_info);
@@ -406,7 +422,10 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	K0 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
+	END_PERF_PROF(K0);
+	ACCUM_PERF_PROF_DURATION(K0, K0);
 
+	START_PERF_PROF(K1);
 	reset_integrandinfo(params.integrand_info, IntegralK1);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K1_integrand);
 	begin_catch_gsl_errors("K1", 0, integral_error_handler, &params.integrand_info);
@@ -414,7 +433,10 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	K1 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
+	END_PERF_PROF(K1);
+	ACCUM_PERF_PROF_DURATION(K1, K1);
 
+	START_PERF_PROF(K2);
 	reset_integrandinfo(params.integrand_info, IntegralK2);
 	integrand.function = reinterpret_cast<integrand_fn>(&triaxNFW::K2_integrand);
 	begin_catch_gsl_errors("K2", 0, integral_error_handler, &params.integrand_info);
@@ -422,6 +444,8 @@ inline void triaxNFW::calcJKintegrals(Scalar x2, Scalar y2, Scalar sourceSigmaC,
 	K2 = simpson_integrate(&integrand, 1e-3, 1, 1./10) * inv_sqrt_f;
 	end_catch_gsl_errors();
 	save_successful_integral_info(params.integrand_info);
+	END_PERF_PROF(K2);
+	ACCUM_PERF_PROF_DURATION(K2, K2);
 
 	end_catch_gsl_errors();
 }
@@ -457,6 +481,13 @@ inline void triaxNFW::calcIntermediateConvergenceShear(Scalar x, Scalar y, Scala
 // Instead of calculating the intermediate shear angle/magnitude and adding 2*psi to it, I did the rotation directly by a rotation matrix. This shouldn't change the result but means we don't need to calculate arctan.
 void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DRef sourceSigmaC_list, ScalarArray1DRef kappa_out, ScalarArray1DRef gamma1_out, ScalarArray1DRef gamma2_out)
 {
+	START_PERF_PROF(calcConvergenceShear);
+	DECLARE_PERF_PROF_COUNTER(calcIntermediateConvergenceShear);
+	RESET_PERF_PROF_COUNTER(J0perfcounter);
+	RESET_PERF_PROF_COUNTER(J1perfcounter);
+	RESET_PERF_PROF_COUNTER(K0perfcounter);
+	RESET_PERF_PROF_COUNTER(K1perfcounter);
+	RESET_PERF_PROF_COUNTER(K2perfcounter);
 	int num_coords = coord_list->getLen();
 	Vector2* v = coord_list->v;
 	Scalar* p_sourceSigmaC = sourceSigmaC_list->v;
@@ -476,7 +507,10 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DR
 		Scalar yi = -x*sin_2psi + y*cos_2psi;
 
 		Scalar kappa, gamma1_intermediate, gamma2_intermediate;
+		START_PERF_PROF(calcIntermediateConvergenceShear);
 		calcIntermediateConvergenceShear(xi, yi, *p_sourceSigmaC, kappa, gamma1_intermediate, gamma2_intermediate);
+		END_PERF_PROF(calcIntermediateConvergenceShear);
+		ACCUM_PERF_PROF_DURATION(calcIntermediateConvergenceShear, calcIntermediateConvergenceShear);
 
 		Scalar gamma1, gamma2;
 		// transform gamma out of the intermediate coordinate system by rotating through 2*psi
@@ -487,4 +521,13 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DR
 		*p_gamma1_out=gamma1;
 		*p_gamma2_out=gamma2;
 	}
+	END_PERF_PROF(calcConvergenceShear);
+	mpi_log(NULL, "1 iteration of triaxNFW::calcConvergenceShear took %lld ns, %d iterations of calcIntermediateConvergenceShear took %lld ns", GET_PERF_PROF_DURATION(calcConvergenceShear), n, PERF_PROF_COUNTER_NS(calcIntermediateConvergenceShear));
+	mpi_log(NULL, "\tAll iterations of J0,J1,K0,K1,K2 integrals took %lld %lld %lld %lld %lld (ns)",
+		PERF_PROF_COUNTER_NS(J0),
+		PERF_PROF_COUNTER_NS(J1),
+		PERF_PROF_COUNTER_NS(K0),
+		PERF_PROF_COUNTER_NS(K1),
+		PERF_PROF_COUNTER_NS(K2)
+	);
 }
