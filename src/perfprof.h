@@ -7,13 +7,13 @@
 
 #include <chrono>
 
-#define DECLARE_PERF_PROF_COUNTER(counter) long long counter = 0LL
-#define RESET_PERF_PROF_COUNTER(counter) counter = 0LL
-#define PERF_PROF_COUNTER_NS(counter) (counter)
+#define DECLARE_PERF_PROF_COUNTER(counter) long long counter##_perf_prof_counter = 0LL
+#define RESET_PERF_PROF_COUNTER(counter) counter##_perf_prof_counter = 0LL
+#define PERF_PROF_COUNTER_NS(counter) (counter##_perf_prof_counter)
 #define START_PERF_PROF(name) auto name##_start_time = std::chrono::high_resolution_clock::now()
 #define END_PERF_PROF(name) auto name##_end_time = std::chrono::high_resolution_clock::now()
 #define GET_PERF_PROF_DURATION(name) get_perf_prof_duration(name##_start_time, name##_end_time)
-#define ACCUM_PERF_PROF_DURATION(name, counter) counter += get_perf_prof_duration(name##_start_time, name##_end_time)
+#define ACCUM_PERF_PROF_DURATION(name, counter) counter##_perf_prof_counter += get_perf_prof_duration(name##_start_time, name##_end_time)
 
 static inline long long get_perf_prof_duration(std::chrono::time_point<std::chrono::high_resolution_clock>& start_time, std::chrono::time_point<std::chrono::high_resolution_clock>& end_time)
 {
