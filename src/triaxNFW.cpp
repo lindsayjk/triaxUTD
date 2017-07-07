@@ -483,11 +483,11 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DR
 {
 	START_PERF_PROF(calcConvergenceShear);
 	DECLARE_PERF_PROF_COUNTER(calcIntermediateConvergenceShear);
-	RESET_PERF_PROF_COUNTER(J0perfcounter);
-	RESET_PERF_PROF_COUNTER(J1perfcounter);
-	RESET_PERF_PROF_COUNTER(K0perfcounter);
-	RESET_PERF_PROF_COUNTER(K1perfcounter);
-	RESET_PERF_PROF_COUNTER(K2perfcounter);
+	RESET_PERF_PROF_COUNTER(J0);
+	RESET_PERF_PROF_COUNTER(J1);
+	RESET_PERF_PROF_COUNTER(K0);
+	RESET_PERF_PROF_COUNTER(K1);
+	RESET_PERF_PROF_COUNTER(K2);
 	int num_coords = coord_list->getLen();
 	Vector2* v = coord_list->v;
 	Scalar* p_sourceSigmaC = sourceSigmaC_list->v;
@@ -498,7 +498,8 @@ void triaxNFW::calcConvergenceShear(Vector2Array1DRef coord_list, ScalarArray1DR
 	Scalar sin_2psi = sin(2*psi);
 	Scalar cos_2psi = cos(2*psi);
 
-	for (int n = 0; n < num_coords; n++, v++, p_sourceSigmaC++, p_kappa_out++, p_gamma1_out++, p_gamma2_out++) {
+	int n;
+	for (n = 0; n < num_coords; n++, v++, p_sourceSigmaC++, p_kappa_out++, p_gamma1_out++, p_gamma2_out++) {
 		Scalar x = v->x/qX;
 		Scalar y = v->y/qX;
 
