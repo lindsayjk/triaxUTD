@@ -1,0 +1,16 @@
+
+notes from V
+
+The first is the umbrella program that runs the lensing fits -- which has lots of stuff in about the monte carlo setup, which you wouldn't need.  That is called MCMasterPlainNew.c.
+
+The second is the program called by that program to calculate the shear for a triaxial halo, called shearcalc3axNFWNEW.c
+
+The third is the program called by that program to calculate the shear at an individual point.  This is called NW3axlensAlt_smallinterp.c  Most of this is an interpolation routine that picks out the shear from look-up tables I had assembled.  However, an early section, which I've highlighted, calculated the shear directly (it's there for boundary cases where the interpolation tables might fail).  This refer to numerical integrals -- the integral in Keeton, which are in yet a fourth file:
+
+WLutil.c
+
+A couple things that might be helpful in following the logic:
+
+-Before calculating the lensing, the code rotates into the frame of the traixial halo, so that the lookup tables don't have to deal with orientation angles.  This is the angle Psi calculated in shearcalc3axNFWNEW.c.
+-Fcons is the f in my thesis notation.
+-I am not 100% sure that MCMasterPlainNew.c is of exactly the same generation of code as the others I'm sending you -- but it has very little to do with the lensing calculations anyway -- it is just there to give some context for the other files.  
